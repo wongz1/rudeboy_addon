@@ -1,7 +1,8 @@
 --[[
     Commands.lua - /rudeboy (or /rb)
 
-    /rb                          status and help
+    /rb                          open the window
+    /rb status                   status and help in chat
     /rb on | off                 hide chat lines or not
     /rb word add <w1, w2, ...>   filter words or phrases (comma separated, "*" is a wildcard)
     /rb word remove <word>
@@ -25,6 +26,7 @@ local ADDON, ns = ...
 local P = ns.Print
 
 local HELP = {
+    "/rb - open the window,  /rb status - this text",
     "/rb on | off - hide chat lines or not",
     "/rb word add <w1, w2, ...> | remove <word> | list",
     "/rb player add [name] | remove <name> | list   (no name = your target)",
@@ -74,93 +76,70 @@ end
 ---------------------------------------------------------------------------
 
 local function wordCmd(action, arg)
-    local words = ns.db.words
     if action == "add" or action == "remove" then
-        local done, refused = {}, false
+        local done = {}
         for piece in (arg .. ","):gmatch("([^,]*),") do
-            local w = ns.Trim(piece):lower():gsub("%s+", " ")
-            if w ~= "" then
-                if action == "add" then
-                    if ns.CompileWord(w) then
-                        words[w] = true
-                        done[#done + 1] = w
-                    else
-                        P(("\"%s\" has no letters to match."):format(w))
-                        refused = true
-                    end
-                elseif words[w] then
-                    words[w] = nil
-                    done[#done + 1] = w
-                end
+            if ns.Trim(piece) ~= "" then
+                local w, err = (action == "add" and ns.AddWord or ns.RemoveWord)(piece)
+                if w then done[#done + 1] = w else P(err) end
             end
         end
-        ns.RebuildWords()
-        if #done == 0 then
-            if refused then return end
-            P(action == "add" and "usage: /rb word add <word or phrase>, <another>" or "not on your word list: " .. arg)
-        else
+        if #done > 0 then
             P((action == "add" and "filtering: " or "no longer filtering: ") .. table.concat(done, ", "))
+        elseif ns.Trim(arg) == "" then
+            P(("usage: /rb word %s <word or phrase>, <another>"):format(action))
         end
     else
-        printList("words", words)
+        printList("words", ns.db.words)
     end
 end
 
+-- Your target's name and guild, or nil and why not.
+function ns.TargetInfo()
+    if not (UnitExists("target") and UnitIsPlayer("target")) then return nil, nil, "target a player first." end
+    local name, guild = ns.LearnUnit("target")
+    return name, guild
+end
+
 local function playerCmd(action, arg)
-    local players = ns.db.players
     if action == "add" then
-        local name = arg
+        local name, err = arg, nil
         if name == "" then
-            if not (UnitExists("target") and UnitIsPlayer("target")) then
-                P("usage: /rb player add <name>, or target a player first.")
-                return
-            end
-            name = ns.LearnUnit("target")
+            local _
+            name, _, err = ns.TargetInfo()
+            if not name then P("usage: /rb player add <name>, or " .. err) return end
         end
-        players[ns.NormalizeName(name)] = name
-        P(("filtering player %s."):format(name))
+        local added
+        added, err = ns.AddPlayer(name)
+        P(added and ("filtering player %s."):format(added) or err)
     elseif action == "remove" then
-        local key = ns.NormalizeName(arg)
-        if players[key] then
-            P(("no longer filtering player %s."):format(players[key]))
-            players[key] = nil
-        else
-            P("not on your player list: " .. arg)
-        end
+        local removed, err = ns.RemovePlayer(arg)
+        P(removed and ("no longer filtering player %s."):format(removed) or err)
     else
-        printList("players", players)
+        printList("players", ns.db.players)
     end
 end
 
 local function guildCmd(action, arg)
-    local guilds = ns.db.guilds
     if action == "add" then
         local guild = arg
         if guild == "" then
-            local _, g = ns.LearnUnit("target")
-            if not g then
-                P("usage: /rb guild add <guild name>, or target a player who is in the guild.")
-                return
-            end
+            local _, g = ns.TargetInfo()
+            if not g then P("usage: /rb guild add <guild name>, or target a player who is in the guild.") return end
             guild = g
         end
-        guilds[ns.NormalizeGuild(guild)] = guild
-        P(("filtering guild <%s>. Run /rb scan to learn its online members now."):format(guild))
+        local added, err = ns.AddGuild(guild)
+        P(added and ("filtering guild <%s>. Run /rb scan to learn its online members now."):format(added) or err)
     elseif action == "remove" then
-        local key = ns.NormalizeGuild(arg)
-        if guilds[key] then
-            P(("no longer filtering guild <%s>."):format(guilds[key]))
-            guilds[key] = nil
-        else
-            P("not on your guild list: " .. arg)
-        end
+        local removed, err = ns.RemoveGuild(arg)
+        P(removed and ("no longer filtering guild <%s>."):format(removed) or err)
     else
-        printList("guilds", guilds)
+        printList("guilds", ns.db.guilds)
     end
 end
 
 local function toggle(key, value, label)
-    if value == "on" or value == "off" then ns.db[key] = (value == "on") end
+    if value == "on" or value == "off" then ns.db[key] = (value == "on") ns.Changed() end
     P(("%s: %s."):format(label, onOff(ns.db[key])))
 end
 
@@ -184,7 +163,9 @@ SlashCmdList["RUDEBOY"] = function(input)
     local action, arg = rest:match("^(%S*)%s*(.-)$")
     action = action:lower()
 
-    if cmd == "" then
+    if cmd == "" or cmd == "ui" or cmd == "show" then
+        ns.ToggleUI()
+    elseif cmd == "status" or cmd == "help" then
         printStatus()
     elseif cmd == "on" or cmd == "off" then
         toggle("enabled", cmd, "hiding chat")

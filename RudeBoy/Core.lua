@@ -169,6 +169,71 @@ function ns.LineReason(msg, author)
 end
 
 ---------------------------------------------------------------------------
+-- Editing the lists, shared by the slash commands and the window. Each returns the entry as
+-- stored on success, or nil and a reason.
+---------------------------------------------------------------------------
+
+-- Lets the window redraw when a list changes from anywhere.
+function ns.Changed()
+    if ns.RefreshUI then ns.RefreshUI() end
+end
+
+function ns.AddWord(entry)
+    local w = trim(entry):lower():gsub("%s+", " ")
+    if w == "" then return nil, "type a word first." end
+    if not ns.CompileWord(w) then return nil, ("\"%s\" has no letters to match."):format(w) end
+    ns.db.words[w] = true
+    ns.RebuildWords()
+    ns.Changed()
+    return w
+end
+
+function ns.RemoveWord(entry)
+    local w = trim(entry):lower():gsub("%s+", " ")
+    if not ns.db.words[w] then return nil, "not on your word list: " .. w end
+    ns.db.words[w] = nil
+    ns.RebuildWords()
+    ns.Changed()
+    return w
+end
+
+function ns.AddPlayer(name)
+    name = trim(name)
+    local key = ns.NormalizeName(name)
+    if key == "" then return nil, "type a player name first." end
+    ns.db.players[key] = name
+    ns.Changed()
+    return name
+end
+
+function ns.RemovePlayer(name)
+    local key = ns.NormalizeName(name)
+    local shown = ns.db.players[key]
+    if not shown then return nil, "not on your player list: " .. trim(name) end
+    ns.db.players[key] = nil
+    ns.Changed()
+    return shown
+end
+
+function ns.AddGuild(guild)
+    guild = trim(guild)
+    local key = ns.NormalizeGuild(guild)
+    if key == "" then return nil, "type a guild name first." end
+    ns.db.guilds[key] = guild
+    ns.Changed()
+    return guild
+end
+
+function ns.RemoveGuild(guild)
+    local key = ns.NormalizeGuild(guild)
+    local shown = ns.db.guilds[key]
+    if not shown then return nil, "not on your guild list: " .. trim(guild) end
+    ns.db.guilds[key] = nil
+    ns.Changed()
+    return shown
+end
+
+---------------------------------------------------------------------------
 -- Saved settings
 ---------------------------------------------------------------------------
 

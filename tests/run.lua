@@ -36,10 +36,41 @@ local function boot(opts)
 
     _G.RudeBoyDB = opts.db
     _G.SlashCmdList = {}
-    _G.CreateFrame = function()
-        local f = { scripts = {}, events = {} }
-        function f:SetScript(k, fn) self.scripts[k] = fn end
-        function f:RegisterEvent(e) self.events[e] = true end
+    -- Frames record scripts, events, text, shown/checked/enabled state; any other method is a no-op.
+    local methods = {}
+    function methods:SetScript(k, fn) self.scripts[k] = fn end
+    function methods:RegisterEvent(e) self.events[e] = true end
+    function methods:Show()
+        if self.shown then return end
+        self.shown = true
+        if self.scripts.OnShow then self.scripts.OnShow(self) end
+    end
+    function methods:Hide()
+        if not self.shown then return end
+        self.shown = false
+        if self.scripts.OnHide then self.scripts.OnHide(self) end
+    end
+    function methods:IsShown() return self.shown end
+    function methods:SetText(t) self.text = t end
+    function methods:GetText() return self.text end
+    function methods:SetChecked(v) self.checked = v and true or false end
+    function methods:GetChecked() return self.checked end
+    function methods:Enable() self.enabled = true end
+    function methods:Disable() self.enabled = false end
+    function methods:IsEnabled() return self.enabled end
+    function methods:Click() if self.enabled and self.scripts.OnClick then self.scripts.OnClick(self) end end
+    local function mockFrame(name)
+        local f = setmetatable({ scripts = {}, events = {}, shown = true, enabled = true, checked = false, text = "" },
+            { __index = function(_, k) return methods[k] or function() end end })
+        if name then _G[name] = f end
+        return f
+    end
+    function methods:CreateFontString() return mockFrame() end
+    function methods:CreateTexture() return mockFrame() end
+    _G.UISpecialFrames = {}
+    _G.UIParent = mockFrame()
+    _G.CreateFrame = function(_, name)
+        local f = mockFrame(name)
         env.frames[#env.frames + 1] = f
         return f
     end
@@ -336,8 +367,8 @@ end
 ---------------------------------------------------------------------------
 do
     local env = boot()
-    env.slash("")
-    check(env.prints[1]:find("v0%.1%.0"), "status prints the version")
+    env.slash("status")
+    check(env.prints[1]:find("v0%.1%.0"), "/rb status prints the version")
 
     env.slash("player add")
     check(env.lastPrint():find("usage"), "player add with no target explains itself")
@@ -361,6 +392,89 @@ do
     env.chat("CHAT_MSG_SAY", "some phrase", "Loud Mouth")
     env.slash("log")
     check(env.lastPrint():find("Loud Mouth") and env.lastPrint():find("say"), "log shows the hidden line")
+end
+
+---------------------------------------------------------------------------
+-- The window
+---------------------------------------------------------------------------
+do
+    local env = boot()
+    env.slash("word add secretword, other")
+    env.slash("")
+    local ui = env.ns.ui
+    check(ui.frame and ui.frame:IsShown(), "/rb opens the window")
+
+    local function labels()
+        local out = {}
+        for _, row in ipairs(ui.rows) do if row:IsShown() then out[#out + 1] = row.label:GetText() end end
+        return table.concat(out, ",")
+    end
+    check(labels() == "********,********", "words are masked when the window opens")
+    check(ui.count:GetText() == "2 words (hidden)", "word count shown while masked")
+    ui.reveal:Click()
+    check(labels() == "other,secretword", "Show reveals the words")
+    check(ui.reveal:GetText() == "Hide", "the button then says Hide")
+    ui.reveal:Click()
+    check(labels() == "********,********", "Hide masks them again")
+    ui.reveal:Click()
+    ui.frame:Hide()
+    env.slash("")
+    check(labels() == "********,********", "reopening the window masks the words again")
+
+    ui.input:SetText("newword, another")
+    ui.add:Click()
+    check(env.ns.db.words.newword and env.ns.db.words.another, "Add adds comma separated words")
+    check(ui.status:GetText() == "Added 2 words." and ui.input:GetText() == "", "adding words doesn't show them")
+    check(not ui.status:GetText():find("newword"), "the status never names a masked word")
+    ui.input:SetText("***")
+    ui.add:Click()
+    check(not ui.status:GetText():find("%*%*%*") and ui.status:GetText():find("no letters"), "a bad word is refused without echoing it")
+
+    -- rows sorted: another, newword, other, secretword
+    ui.rows[1].remove:Click()
+    check(env.ns.db.words.another == nil and ui.status:GetText() == "Removed 1 word.", "Remove removes a masked row without naming it")
+
+    ui.tabs[2]:Click()
+    check(not ui.tabs[2].enabled and ui.tabs[1].enabled, "the current tab button is pressed in")
+    check(ui.target:IsShown() and not ui.reveal:IsShown() and not ui.scan:IsShown(), "players tab buttons")
+    ui.input:SetText("Bad Guy")
+    ui.add:Click()
+    check(labels() == "Bad Guy" and env.ns.IsPlayerFiltered("bad guy"), "players are added and shown unmasked")
+    ui.target:Click()
+    check(ui.status:GetText() == "Target a player first.", "Add target with no target")
+    env.units.target = { name = "Target Troll", guild = "Bad Guild" }
+    ui.target:Click()
+    check(labels() == "Bad Guy,Target Troll", "Add target adds the target")
+
+    env.slash("player add Zed Zulu")
+    check(labels() == "Bad Guy,Target Troll,Zed Zulu", "changes from slash commands show in the open window")
+
+    for i = 1, 15 do env.ns.AddPlayer("Extra " .. string.char(64 + i)) end
+    check(ui.page:GetText() == "1-10 of 18" and not ui.prev.enabled and ui.next.enabled, "long lists are paged")
+    ui.next:Click()
+    check(ui.page:GetText() == "9-18 of 18" and ui.rows[10].label:GetText() == "Zed Zulu", "next page stops at the end")
+    ui.frame.scripts.OnMouseWheel(ui.frame, 1)
+    check(ui.page:GetText() == "8-17 of 18", "mouse wheel scrolls")
+
+    ui.tabs[3]:Click()
+    check(ui.empty:IsShown() and ui.scan:IsShown(), "guilds tab starts empty and has Scan")
+    ui.target:Click()
+    check(labels() == "Bad Guild", "Add target adds the target's guild")
+    ui.scan:Click()
+    check(env.whoQuery == 'g-"Bad Guild"', "Scan sends /who")
+    ui.rows[1].remove:Click()
+    check(env.ns.IsGuildFiltered("Bad Guild") == nil and ui.status:GetText() == "Removed Bad Guild.", "guild removed by its row")
+
+    ui.checks.enabled:SetChecked(false)
+    ui.checks.enabled:Click()
+    check(env.ns.db.enabled == false, "Hide chat checkbox turns hiding off")
+    env.slash("on")
+    check(ui.checks.enabled:GetChecked(), "and follows /rb on")
+
+    ui.tabs[1]:Click()
+    check(labels():find("^%*"), "going back to Words masks again")
+    env.slash("")
+    check(not ui.frame:IsShown(), "/rb again closes the window")
 end
 
 realPrint(("%d passed, %d failed"):format(passed, failed))

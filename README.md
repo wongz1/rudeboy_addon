@@ -19,12 +19,24 @@ guild, officer, party, raid and battleground chat. Your own lines are never hidd
 Copy the `RudeBoy` folder into the game's `Interface/AddOns` folder and restart the client.
 If it shows as out of date, tick "Load out of date AddOns" (see the note in `RudeBoy/RudeBoy.toc`).
 
+## The window
+
+Type `/rb` to open it (again, or Escape, to close). It has a tab each for **Words**, **Players**
+and **Guilds**: type into the box and press Add (or Enter), and each entry has a Remove button.
+Players and Guilds also have **Add target**, and Guilds has **Scan** (see below). Checkboxes at
+the bottom turn chat hiding, group warnings and invite declining on and off.
+
+The Words tab never shows your words on its own: every entry reads `********` until you press
+**Show**, and they are masked again when you reopen the window or switch tabs. Adding or removing
+words from the window reports how many, not which.
+
 ## Commands
 
 `/rudeboy` or `/rb`
 
 ```
-/rb                          status and help
+/rb                          open or close the window
+/rb status                   status and help in chat
 /rb on | off                 hide chat lines or not
 /rb word add <w1, w2, ...>   filter words or phrases, comma separated
 /rb word remove <word>
