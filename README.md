@@ -73,14 +73,14 @@ guild member it has already seen. It learns guilds from:
 
 After adding guilds, run `/rb scan`. One `/who` shows at most 50 people, so a search that comes
 back full is split into one search per class, and a class that is still full is split by level
-range. The addon only lets `/who` run when you press a key or click, so each `/rb scan` sends
+range. The game only lets an addon run `/who` when you press a key or click, so each `/rb scan` sends
 one search. Run it again until it says "Scan finished". A macro on a key makes this one key press
 per search. With no guild name it works through every guild on your list; `/rb scan <guild>` does
 just that guild. Online members are hidden from then on. What the addon learns is saved and remembered for 30 days after it
 last saw each player. A `/who` that shows someone has left the guild clears them.
 
 A guild entry can use `*` too: `Streamer*` covers every guild whose name starts with "Streamer".
-`/rb scan` needs a full guild name.
+`/rb scan` skips wildcard entries, since `/who` needs a full guild name.
 
 ## Tests
 
