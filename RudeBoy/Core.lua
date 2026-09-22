@@ -9,6 +9,8 @@
         players      { [normalized name] = "Shown Name" }
         guilds       { [normalized guild] = "Shown Guild" }
         known        { [normalized name] = { g = "Guild", t = time seen } }
+        hiddenTotal  lifetime count of hidden lines; hiddenByKind splits it by word/player/guild
+        countingSince  the date the lifetime count started
         lastScan     time() the last /rb scan finished
         reminderMinutes  remind to scan when lastScan is older than this (30 to 720)
         log          the last 100 hidden lines, oldest first (the window's Hidden tab)
@@ -292,6 +294,9 @@ function ns.LoadDB()
     db.guilds = db.guilds or {}
     db.known = db.known or {}
     db.hiddenTotal = db.hiddenTotal or 0
+    db.hiddenByKind = db.hiddenByKind or {}
+    for _, kind in ipairs({ "word", "player", "guild" }) do db.hiddenByKind[kind] = db.hiddenByKind[kind] or 0 end
+    db.countingSince = db.countingSince or (date and date("%Y-%m-%d")) or ""
     db.reminderMinutes = db.reminderMinutes or 720
     db.log = db.log or {}
     if db.preview == nil then db.preview = false end

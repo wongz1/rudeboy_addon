@@ -56,15 +56,17 @@ local function judge(event, msg, author, guid, where)
     local reason = ns.LineReason(msg, author, guid)
     if not reason then return false end
 
+    local kind = reason:match("^%a+")   -- "word", "player" or "guild"; never names the word
     ns.hiddenSession = ns.hiddenSession + 1
     ns.db.hiddenTotal = ns.db.hiddenTotal + 1
+    ns.db.hiddenByKind[kind] = (ns.db.hiddenByKind[kind] or 0) + 1
     local log = ns.db.log
     log[#log + 1] = {
         at = date and date("%m-%d %H:%M") or "",
         where = where,
         author = author,
         msg = msg,
-        kind = reason:match("^%a+"),   -- "word", "player" or "guild"; never names the word
+        kind = kind,
         reason = reason,
     }
     while #log > ns.LOG_SIZE do table.remove(log, 1) end

@@ -154,7 +154,9 @@ function ns.RefreshUI()
     ui.checks.enabled:SetChecked(ns.db.enabled)
     ui.checks.alerts:SetChecked(ns.db.alerts)
     ui.checks.autoDecline:SetChecked(ns.db.autoDecline)
-    ui.hidden:SetText(("Hidden this session: %d"):format(ns.hiddenSession or 0))
+    local by = ns.db.hiddenByKind
+    ui.hidden:SetText(("Lines hidden: |cffffd100%d lifetime|r since %s, %d this session\n%d by word, %d by player, %d by guild"):format(
+        ns.db.hiddenTotal, ns.db.countingSince, ns.hiddenSession or 0, by.word, by.player, by.guild))
 
     local minutes = ns.db.reminderMinutes
     ui.reminder:SetText("Remind me to scan every " .. ns.FormatInterval(minutes))
@@ -414,8 +416,9 @@ local function build()
     ui.lastScan = fontString(f, "GameFontDisableSmall")
     ui.lastScan:SetPoint("TOPRIGHT", -28, reminderY - 5)
 
-    ui.hidden = fontString(f, "GameFontDisableSmall")
-    ui.hidden:SetPoint("BOTTOMLEFT", 26, 20)
+    ui.hidden = fontString(f, "GameFontHighlightSmall")
+    ui.hidden:SetPoint("BOTTOMLEFT", 26, 14)
+    ui.hidden:SetJustifyH("LEFT")
 
     -- About: a panel laid over the lists until closed
     local about = CreateFrame("Frame", nil, f, BackdropTemplateMixin and "BackdropTemplate" or nil)

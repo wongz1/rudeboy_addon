@@ -77,7 +77,7 @@ local function boot(opts)
     _G.ChatFrame_AddMessageEventFilter = function(event, fn) env.filters[event] = fn end
     _G.GetTime = function() return env.now end
     _G.time = function() return env.clock end
-    _G.date = function() return "12:00" end
+    _G.date = function(fmt) return fmt == "%Y-%m-%d" and "2026-09-22" or "12:00" end
     _G.print = function(s) env.prints[#env.prints + 1] = s end
     _G.UnitGUID = function(unit) return unit == "player" and "Player-1-SELF" or nil end
     _G.UnitExists = function(unit) return env.units[unit] ~= nil end
@@ -639,10 +639,24 @@ do
     env.slash("debug")
     check(env.ns.db.recentAuthors and #env.ns.db.recentAuthors > 0, "recent senders are saved for reading outside the game")
 
+    -- lifetime counter, split by kind, kept through Clear
+    local before = env.ns.db.hiddenTotal
+    env.filterRaw("CHAT_MSG_SAY", "badword", "Some Body", 3900)
+    env.filterRaw("CHAT_MSG_SAY", "hi", "Bad Actor", 3901)
+    check(env.ns.db.hiddenTotal == before + 2, "lifetime count goes up")
+    local by = env.ns.db.hiddenByKind
+    check(by.word + by.player + by.guild == env.ns.db.hiddenTotal and by.player >= 2, "split by word, player and guild")
+    env.slash("")
+    check(ui.hidden:GetText():find("lifetime") and ui.hidden:GetText():find("since 2026%-09%-22"), "window shows the lifetime count")
+    env.slash("")
+    env.slash("status")
+    check(table.concat(env.prints, "\n"):find("lifetime %(" .. by.word .. " by word"), "/rb status shows it")
+
     -- saved: a new session sees the list (boot last, it takes over the globals)
     env.filterRaw("CHAT_MSG_SAY", "badword", "Last One", 4000)
     local later = boot({ db = env.ns.db })
-    check(#later.ns.db.log == 1 and later.ns.db.log[1].author == "Last One", "hidden lines are saved")
+    check(later.ns.db.log[#later.ns.db.log].author == "Last One", "hidden lines are saved")
+    check(later.ns.db.hiddenTotal == env.ns.db.hiddenTotal and later.ns.hiddenSession == 0, "lifetime count is saved, session count starts over")
 end
 
 realPrint(("%d passed, %d failed"):format(passed, failed))

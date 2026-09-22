@@ -62,7 +62,9 @@ local function printStatus()
         ns.VERSION, onOff(db.enabled), onOff(db.alerts), onOff(db.autoDecline)))
     P(("%d words, %d players, %d guilds filtered. Guilds known for %d players."):format(
         count(db.words), count(db.players), count(db.guilds), count(db.known)))
-    P(("hidden %d lines this session, %d in total."):format(ns.hiddenSession, db.hiddenTotal))
+    P(("hidden %d lines this session, %d lifetime (%d by word, %d player, %d guild) since %s."):format(
+        ns.hiddenSession, db.hiddenTotal, db.hiddenByKind.word, db.hiddenByKind.player, db.hiddenByKind.guild,
+        db.countingSince))
     for _, line in ipairs(HELP) do P("  " .. line) end
 end
 
