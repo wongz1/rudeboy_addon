@@ -29,6 +29,17 @@ ns.hiddenSession = 0
 
 local decided, decidedOrder = {}, {}
 
+-- The last few senders exactly as the game wrote them, for /rb debug.
+ns.recentAuthors = {}
+local function noteAuthor(author, guid)
+    local list = ns.recentAuthors
+    for _, a in ipairs(list) do
+        if a.author == author and a.guid == guid then return end
+    end
+    list[#list + 1] = { author = author, guid = guid }
+    if #list > 5 then table.remove(list, 1) end
+end
+
 local function isSelf(author, guid)
     if guid and UnitGUID and guid == UnitGUID("player") then return true end
     return ns.NormalizeName(author) == ns.NormalizeName(UnitName("player"))
@@ -37,7 +48,7 @@ end
 local function judge(event, msg, author, guid)
     if not (ns.db and ns.db.enabled) then return false end
     if isSelf(author, guid) then return false end
-    local reason = ns.LineReason(msg, author)
+    local reason = ns.LineReason(msg, author, guid)
     if not reason then return false end
 
     ns.hiddenSession = ns.hiddenSession + 1
@@ -53,6 +64,7 @@ function ns.ChatFilter(frame, event, msg, author, ...)
     local lineID = select(9, ...)
     local guid = select(10, ...)
     if type(lineID) == "number" and decided[lineID] ~= nil then return decided[lineID] end
+    pcall(noteAuthor, author, guid)
 
     -- An error here would break chat, so fail open: show the line.
     local ok, hide = pcall(judge, event, msg, author, guid)

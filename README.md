@@ -55,6 +55,7 @@ words from the window reports how many, not which.
 /rb reminder <minutes>       how old a scan gets before you're reminded (30 to 720, default 720)
 /rb log                      the last 20 hidden lines, with their text
 /rb test <text>              would this line be hidden by your word list?
+/rb debug                    how the game writes names: yours, your target's, recent senders
 ```
 
 All lists are shared by every character on the account.
@@ -113,7 +114,10 @@ luajit tests/run.lua
 ## Not yet checked in the real client
 
 - The interface number in the `.toc` (copied from CatFacts).
-- How WoW Forever returns two-part character names from `UnitName`. Names are matched with spaces,
-  case and any "-Realm" suffix ignored, so "Bob Builder", "bobbuilder" and "Bob Builder-Realm"
-  are the same player.
+- How WoW Forever writes two-part names in chat, `/who` and invites. The game has been seen writing
+  "Cat Facts" (Blizzard's saved data) and "Cat-Facts" (settings folders), so names are compared with
+  spaces, hyphens and case ignored, and a server suffix is only dropped when it is this server or
+  follows a name that already has a space. "Cat Facts", "Cat-Facts" and "CatFacts" are the same
+  player; "Cat" alone is not. Chat senders are also checked by the name the game gives for their
+  GUID, in case a line shows them another way. `/rb debug` prints exactly what the game returns.
 - The `/who` line format used to learn guilds from chat is the English client's.

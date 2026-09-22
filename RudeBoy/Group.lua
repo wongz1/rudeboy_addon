@@ -98,7 +98,7 @@ function ns.CheckGroup(verbose)
         if name and key ~= me and not seen[key] then
             seen[key] = true
             members = members + 1
-            local why = ns.PersonReason(name, guild)
+            local why = ns.PersonReason(name, guild, UnitGUID and UnitGUID(unit))
             if why then
                 found = found + 1
                 if verbose or not warned[key] then
@@ -120,9 +120,9 @@ local function scheduleRechecks()
     for _, d in ipairs(RECHECK_DELAYS) do pending[#pending + 1] = now + d end
 end
 
-local function onInvite(inviter)
+local function onInvite(inviter, guid)
     if not inviter then return end
-    local why = ns.PersonReason(inviter)
+    local why = ns.PersonReason(inviter, nil, guid)
     if not why then return end
     if ns.db.autoDecline and DeclineGroup then
         DeclineGroup()
@@ -157,7 +157,9 @@ frame:SetScript("OnEvent", function(self, event, ...)
         }) do register(e) end
         ns.CheckGroup(false)
     elseif event == "PARTY_INVITE_REQUEST" then
-        if ns.db.alerts or ns.db.autoDecline then onInvite((...)) end
+        -- the inviter's GUID is the 7th value on clients that send it
+        local guid = select(7, ...)
+        if ns.db.alerts or ns.db.autoDecline then onInvite((...), type(guid) == "string" and guid or nil) end
     elseif event == "GROUP_ROSTER_UPDATE" or event == "PARTY_MEMBERS_CHANGED" or event == "RAID_ROSTER_UPDATE" then
         if ns.db.alerts then
             ns.CheckGroup(false)

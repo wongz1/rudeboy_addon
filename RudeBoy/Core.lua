@@ -31,11 +31,45 @@ end
 -- Names
 ---------------------------------------------------------------------------
 
--- "Bob Builder-Stormrage", "bob builder" and "BobBuilder" are all "bobbuilder".
+local function trim(s)
+    return (tostring(s or ""):gsub("^%s+", ""):gsub("%s+$", ""))
+end
+
+-- WoW Forever characters have a first and a last name, and the game has been seen writing
+-- them both as "Cat Facts" (UnitName) and as "Cat-Facts" (the settings folder). A hyphen can
+-- also start a server suffix, "Cat Facts-Server". So the suffix is only dropped when it is
+-- this server's name, or when the part before it already has a space; then spaces, hyphens
+-- and apostrophes are removed. All of these are "catfacts":
+--     Cat Facts   Cat-Facts   CatFacts   cat facts   Cat Facts-Server   Cat-Facts-<this server>
+local function squash(s)
+    return (s:lower():gsub("[%s%-']", ""))
+end
+
+local function realmKey()
+    local r = (GetNormalizedRealmName and GetNormalizedRealmName()) or (GetRealmName and GetRealmName())
+    return type(r) == "string" and r ~= "" and squash(r) or nil
+end
+
 function ns.NormalizeName(name)
     if type(name) ~= "string" then return "" end
-    name = name:gsub("%-.*$", "")
-    return (name:lower():gsub("%s+", ""))
+    name = trim(name)
+    local base, suffix = name:match("^(.+)%-([^%-]+)$")
+    if base and (base:find("%s") or squash(suffix) == realmKey()) then name = base end
+    return squash(name)
+end
+
+-- Every name a chat sender may go by: the name on the line, and the name the game gives for
+-- their GUID, in case the two are written differently.
+function ns.NamesFor(author, guid)
+    local names = { author }
+    if type(guid) == "string" and guid ~= "" and GetPlayerInfoByGUID then
+        local ok, _, _, _, _, _, name, realm = pcall(GetPlayerInfoByGUID, guid)
+        if ok and type(name) == "string" and name ~= "" then
+            names[#names + 1] = name
+            if type(realm) == "string" and realm ~= "" then names[#names + 1] = name .. "-" .. realm end
+        end
+    end
+    return names
 end
 
 function ns.NormalizeGuild(guild)
@@ -43,9 +77,6 @@ function ns.NormalizeGuild(guild)
     return (guild:lower():gsub("^%s+", ""):gsub("%s+$", ""):gsub("%s+", " "))
 end
 
-local function trim(s)
-    return (tostring(s or ""):gsub("^%s+", ""):gsub("%s+$", ""))
-end
 ns.Trim = trim
 
 ---------------------------------------------------------------------------
@@ -151,19 +182,27 @@ function ns.GuildOf(name)
     return nil
 end
 
--- Why a person should be avoided, or nil. `guild` may be passed when already known.
-function ns.PersonReason(name, guild)
-    local p = ns.IsPlayerFiltered(name)
-    if p then return "player on your list" end
-    guild = guild or ns.GuildOf(name)
+-- Why a person should be avoided, or nil. `guild` may be passed when already known, and
+-- `guid` lets the name the game gives for it be checked too.
+function ns.PersonReason(name, guild, guid)
+    local names = ns.NamesFor(name, guid)
+    for _, n in ipairs(names) do
+        if ns.IsPlayerFiltered(n) then return "player on your list" end
+    end
+    if not guild then
+        for _, n in ipairs(names) do
+            guild = ns.GuildOf(n)
+            if guild then break end
+        end
+    end
     local g = guild and ns.IsGuildFiltered(guild)
     if g then return ("guild <%s>"):format(guild) end
     return nil
 end
 
 -- Why a chat line should be hidden, or nil.
-function ns.LineReason(msg, author)
-    local why = ns.PersonReason(author)
+function ns.LineReason(msg, author, guid)
+    local why = ns.PersonReason(author, nil, guid)
     if why then return why end
     local word = ns.MatchWord(msg)
     if word then return ("word \"%s\""):format(word) end

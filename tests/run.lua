@@ -87,6 +87,13 @@ local function boot(opts)
     _G.RaidWarningFrame, _G.ChatTypeInfo = {}, { RAID_WARNING = {} }
     _G.RaidNotice_AddMessage = function(_, text) env.alerts[#env.alerts + 1] = text end
     _G.PlaySound = function() end
+    _G.GetRealmName = function() return "Classic Beta PvP" end
+    _G.GetBuildInfo = function() return "1.60.1", "1", "today", 16001 end
+    env.guidNames = {}
+    _G.GetPlayerInfoByGUID = function(guid)
+        local n = env.guidNames[guid]
+        if n then return "Warrior", "WARRIOR", "Human", "Human", 2, n, "" end
+    end
     _G.UnitFactionGroup = function() return opts.faction or "Horde" end
     _G.DeclineGroup = function() env.declined = env.declined + 1 end
     _G.StaticPopup_Hide = function() end
@@ -539,6 +546,37 @@ do
     ui.frame:Hide()
     env.slash("")
     check(not ui.about:IsShown(), "About is closed when the window reopens")
+end
+
+---------------------------------------------------------------------------
+-- Two-part WoW Forever names
+---------------------------------------------------------------------------
+do
+    local env = boot()
+    local N = env.ns.NormalizeName
+    for _, form in ipairs({ "Cat Facts", "Cat-Facts", "CatFacts", "cat facts", "  Cat  Facts ",
+                            "Cat Facts-Some Server", "Cat Facts-Classic Beta PvP", "Cat-Facts-ClassicBetaPvP" }) do
+        check(N(form) == "catfacts", "name form " .. form)
+    end
+    check(N("Cat") ~= N("Cat Facts"), "a first name alone is a different player")
+    check(N("Bob-ClassicBetaPvP") == "bob", "a one-part name with this server's suffix")
+
+    env.slash("player add Cat Facts")
+    check(env.chat("CHAT_MSG_SAY", "hi", "Cat-Facts") == true, "hyphen-joined sender matches a spaced entry")
+    check(env.chat("CHAT_MSG_SAY", "hi", "Cat") == false, "first name alone does not match")
+    env.guidNames["Player-1-ABC"] = "Cat Facts"
+    check(env.chat("CHAT_MSG_SAY", "hi", "Cat", "Player-1-ABC") == true, "the GUID's name catches a sender shown by first name")
+
+    env.slash("guild add Streamer Army")
+    env.ns.RememberGuild("Game Enjoyer", "Streamer Army")
+    check(env.chat("CHAT_MSG_SAY", "hi", "Game-Enjoyer") == true, "guild members match whichever way their name is written")
+
+    env.fire("PARTY_INVITE_REQUEST", "Cat", false, false, false, true, false, "Player-1-ABC")
+    check(#env.alerts == 1 and env.alerts[1]:find("Cat is inviting you"), "invites are checked by the inviter's GUID too")
+
+    env.slash("debug")
+    local out = table.concat(env.prints, "\n")
+    check(out:find('UnitName "Me Myself"') and out:find('sender "Cat", by GUID "Cat Facts"'), "/rb debug shows raw names")
 end
 
 realPrint(("%d passed, %d failed"):format(passed, failed))

@@ -21,6 +21,7 @@
     /rb reminder <minutes>       remind to scan when the last scan is older (30 to 720)
     /rb log                      the last hidden lines, with their text
     /rb test <text>              would this line be hidden?
+    /rb debug                    how the game writes names: yours, your target's, recent senders
 ]]
 
 local ADDON, ns = ...
@@ -144,6 +145,33 @@ local function toggle(key, value, label)
     P(("%s: %s."):format(label, onOff(ns.db[key])))
 end
 
+-- Shows every value a name function returns, quoted, so spaces and hyphens are visible.
+local function quoted(...)
+    local out = {}
+    for i = 1, select("#", ...) do out[#out + 1] = ('"%s"'):format(tostring((select(i, ...)))) end
+    return #out > 0 and table.concat(out, ", ") or "(nothing)"
+end
+
+local function printDebug()
+    local _, _, _, toc = GetBuildInfo()
+    P(("interface %s, realm %s / %s"):format(tostring(toc), quoted(GetRealmName and GetRealmName()),
+        quoted(GetNormalizedRealmName and GetNormalizedRealmName())))
+    for _, unit in ipairs({ "player", "target" }) do
+        if UnitExists(unit) then
+            P(("%s: UnitName %s | GetUnitName %s | UnitFullName %s | matches as \"%s\""):format(unit,
+                quoted(UnitName(unit)), quoted(GetUnitName and GetUnitName(unit, true)),
+                quoted(UnitFullName and UnitFullName(unit)), ns.NormalizeName(UnitName(unit))))
+        end
+    end
+    if #ns.recentAuthors == 0 then P("no chat senders seen yet.") end
+    for _, a in ipairs(ns.recentAuthors) do
+        local names = ns.NamesFor(a.author, a.guid)
+        table.remove(names, 1)
+        P(("sender %s, by GUID %s, matches as \"%s\""):format(quoted(a.author), quoted(unpack(names)),
+            ns.NormalizeName(a.author)))
+    end
+end
+
 local function printLog()
     if #ns.log == 0 then P("nothing hidden this session.") return end
     P("last hidden lines (oldest first):")
@@ -187,6 +215,8 @@ SlashCmdList["RUDEBOY"] = function(input)
     elseif cmd == "reminder" then
         if action ~= "" then ns.SetReminder(tonumber(action)) end
         P("scan reminder: every " .. ns.FormatInterval(ns.db.reminderMinutes) .. ".")
+    elseif cmd == "debug" then
+        printDebug()
     elseif cmd == "log" then
         printLog()
     elseif cmd == "test" then
