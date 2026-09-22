@@ -58,6 +58,14 @@ local current = TABS[1]
 local offset = 0        -- index of the first entry shown
 local revealed = false  -- Words tab only
 
+-- 12345 -> "12,345"
+local function commas(n)
+    local s = tostring(math.floor(n or 0))
+    local out = s:reverse():gsub("(%d%d%d)", "%1,"):reverse()
+    return (out:gsub("^,", ""))
+end
+ns.Commas = commas
+
 local function plural(n, noun) return ("%d %s%s"):format(n, noun, n == 1 and "" or "s") end
 
 local function entries()
@@ -155,8 +163,9 @@ function ns.RefreshUI()
     ui.checks.alerts:SetChecked(ns.db.alerts)
     ui.checks.autoDecline:SetChecked(ns.db.autoDecline)
     local by = ns.db.hiddenByKind
-    ui.hidden:SetText(("Lines hidden: |cffffd100%d lifetime|r since %s, %d this session\n%d by word, %d by player, %d by guild"):format(
-        ns.db.hiddenTotal, ns.db.countingSince, ns.hiddenSession or 0, by.word, by.player, by.guild))
+    ui.lifetime:SetText(("%s line%s filtered"):format(commas(ns.db.hiddenTotal), ns.db.hiddenTotal == 1 and "" or "s"))
+    ui.hidden:SetText(("Lines hidden: |cffffd100%s lifetime|r since %s, %s this session\n%s by word, %s by player, %s by guild"):format(
+        commas(ns.db.hiddenTotal), ns.db.countingSince, commas(ns.hiddenSession), commas(by.word), commas(by.player), commas(by.guild)))
 
     local minutes = ns.db.reminderMinutes
     ui.reminder:SetText("Remind me to scan every " .. ns.FormatInterval(minutes))
@@ -262,6 +271,15 @@ local function fontString(parent, template)
     return parent:CreateFontString(nil, "OVERLAY", template or "GameFontHighlightSmall")
 end
 
+-- A fully opaque background, so the window reads the same over any part of the game world.
+local function solidBackground(frame, inset, shade)
+    local bg = frame:CreateTexture(nil, "BACKGROUND")
+    bg:SetPoint("TOPLEFT", inset, -inset)
+    bg:SetPoint("BOTTOMRIGHT", -inset, inset)
+    if bg.SetColorTexture then bg:SetColorTexture(shade, shade, shade * 1.15, 1) else bg:SetTexture(shade, shade, shade * 1.15, 1) end
+    return bg
+end
+
 local function checkbox(parent, label, key, x, y)
     local c = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
     c:SetSize(24, 24)
@@ -287,9 +305,9 @@ local function build()
     f:RegisterForDrag("LeftButton")
     f:SetScript("OnDragStart", f.StartMoving)
     f:SetScript("OnDragStop", f.StopMovingOrSizing)
+    solidBackground(f, 10, 0.07)
     if f.SetBackdrop then
         f:SetBackdrop({
-            bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
             edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
             tile = true, tileSize = 32, edgeSize = 32,
             insets = { left = 11, right = 12, top = 12, bottom = 11 },
@@ -298,8 +316,10 @@ local function build()
     if UISpecialFrames then table.insert(UISpecialFrames, "RudeBoyFrame") end
 
     local title = fontString(f, "GameFontNormalLarge")
-    title:SetPoint("TOP", 0, -18)
+    title:SetPoint("TOP", 0, -14)
     title:SetText("Rude Boy")
+    ui.lifetime = fontString(f, "GameFontNormal")
+    ui.lifetime:SetPoint("TOP", 0, -33)
     local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", -6, -6)
     ui.aboutButton = button(f, "About", 64, function()
@@ -310,12 +330,12 @@ local function build()
     ui.tabs = {}
     for i, tab in ipairs(TABS) do
         local b = button(f, tab.label, 90, function() selectTab(tab) end)
-        b:SetPoint("TOPLEFT", 22 + (i - 1) * 96, -46)
+        b:SetPoint("TOPLEFT", 22 + (i - 1) * 96, -50)
         ui.tabs[i] = b
     end
 
     ui.hint = fontString(f)
-    ui.hint:SetPoint("TOPLEFT", 26, -80)
+    ui.hint:SetPoint("TOPLEFT", 26, -82)
     ui.hint:SetWidth(380)
     ui.hint:SetJustifyH("LEFT")
 
@@ -425,11 +445,13 @@ local function build()
     ui.about = about
     about:SetPoint("TOPLEFT", 14, -40)
     about:SetPoint("BOTTOMRIGHT", -14, 14)
-    about:SetFrameLevel((f:GetFrameLevel() or 0) + 10)
+    -- its own opaque background, drawn in a higher layer than everything in the window
+    about:SetFrameStrata("FULLSCREEN_DIALOG")
+    about:SetFrameLevel((f:GetFrameLevel() or 0) + 50)
     about:EnableMouse(true)
+    solidBackground(about, 3, 0.1)
     if about.SetBackdrop then
         about:SetBackdrop({
-            bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
             edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
             tile = true, tileSize = 16, edgeSize = 16,
             insets = { left = 4, right = 4, top = 4, bottom = 4 },

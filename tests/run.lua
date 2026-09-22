@@ -648,6 +648,8 @@ do
     check(by.word + by.player + by.guild == env.ns.db.hiddenTotal and by.player >= 2, "split by word, player and guild")
     env.slash("")
     check(ui.hidden:GetText():find("lifetime") and ui.hidden:GetText():find("since 2026%-09%-22"), "window shows the lifetime count")
+    check(ui.lifetime:GetText() == env.ns.Commas(env.ns.db.hiddenTotal) .. " lines filtered", "lifetime count under the title")
+    check(env.ns.Commas(1234567) == "1,234,567" and env.ns.Commas(999) == "999" and env.ns.Commas(1000) == "1,000", "thousands separators")
     env.slash("")
     env.slash("status")
     check(table.concat(env.prints, "\n"):find("lifetime %(" .. by.word .. " by word"), "/rb status shows it")
