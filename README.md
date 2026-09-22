@@ -31,6 +31,18 @@ The Words tab never shows your words on its own: every entry reads `********` un
 **Show**, and they are masked again when you reopen the window or switch tabs. Adding or removing
 words from the window reports how many, not which.
 
+## Checking what was hidden
+
+- **Hidden tab** in the window: the last 100 hidden lines, newest first, with time, channel,
+  sender and the kind of rule (word, player or guild). The text is masked until you press
+  **Show**; then hover a line to read all of it. **Clear** empties the list.
+- **Preview** (button on the Hidden tab, or `/rb preview on`): lines are left in chat with a grey
+  `[RudeBoy: word "..."]` tag instead of being removed, so you can watch the filter work. Turn it
+  off to hide them again.
+- The list is saved with your settings, in `WTF/Account/<account>/SavedVariables/RudeBoy.lua`
+  (written when you log out or `/reload`), along with the last few chat senders exactly as the
+  game wrote them.
+
 ## Commands
 
 `/rudeboy` or `/rb`
@@ -53,7 +65,8 @@ words from the window reports how many, not which.
 /rb alerts on | off          group and invite warnings (on by default)
 /rb autodecline on | off     decline invites from filtered people (off by default)
 /rb reminder <minutes>       how old a scan gets before you're reminded (30 to 720, default 720)
-/rb log                      the last 20 hidden lines, with their text
+/rb log [clear]              the last 20 hidden lines in chat, with their text (or clear the list)
+/rb preview on | off         leave would-be-hidden lines in chat with a grey tag, for testing
 /rb test <text>              would this line be hidden by your word list?
 /rb debug                    how the game writes names: yours, your target's, recent senders
 ```

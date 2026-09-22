@@ -19,7 +19,8 @@
     /rb alerts on | off          group and invite warnings
     /rb autodecline on | off     decline invites from filtered people
     /rb reminder <minutes>       remind to scan when the last scan is older (30 to 720)
-    /rb log                      the last hidden lines, with their text
+    /rb log [clear]              the last 20 hidden lines, with their text (or clear the list)
+    /rb preview on | off         show would-be-hidden lines with a grey tag instead, for testing
     /rb test <text>              would this line be hidden?
     /rb debug                    how the game writes names: yours, your target's, recent senders
 ]]
@@ -36,7 +37,8 @@ local HELP = {
     "/rb scan [guild] - /who your guilds to learn who is in them (run again for each next search)",
     "/rb check - check your group now",
     "/rb alerts on | off,  /rb autodecline on | off,  /rb reminder <minutes, 30 to 720>",
-    "/rb log - the last hidden lines,  /rb test <text> - would it be hidden?",
+    "/rb log [clear] - the last hidden lines,  /rb preview on | off - tag lines instead of hiding",
+    "/rb test <text> - would it be hidden?,  /rb debug - how the game writes names",
 }
 
 local function count(t)
@@ -172,11 +174,20 @@ local function printDebug()
     end
 end
 
-local function printLog()
-    if #ns.log == 0 then P("nothing hidden this session.") return end
-    P("last hidden lines (oldest first):")
-    for _, e in ipairs(ns.log) do
-        P(("  %s [%s] %s: %s  |cff999999(%s)|r"):format(e.at, e.event:gsub("^CHAT_MSG_", ""):lower(), tostring(e.author), tostring(e.msg), e.reason))
+local function printLog(action)
+    local log = ns.db.log
+    if action == "clear" then
+        for i = #log, 1, -1 do log[i] = nil end
+        ns.Changed()
+        P("hidden lines list cleared.")
+        return
+    end
+    if #log == 0 then P("nothing hidden yet.") return end
+    local first = math.max(1, #log - 19)
+    P(("last %d of %d hidden lines (oldest first, all of them are on the window's Hidden tab):"):format(#log - first + 1, #log))
+    for i = first, #log do
+        local e = log[i]
+        P(("  %s [%s] %s: %s  |cff999999(%s)|r"):format(e.at, tostring(e.where), tostring(e.author), tostring(e.msg), tostring(e.reason)))
     end
 end
 
@@ -218,7 +229,9 @@ SlashCmdList["RUDEBOY"] = function(input)
     elseif cmd == "debug" then
         printDebug()
     elseif cmd == "log" then
-        printLog()
+        printLog(action)
+    elseif cmd == "preview" then
+        toggle("preview", action, "preview (show would-be-hidden lines with a tag)")
     elseif cmd == "test" then
         local why = ns.MatchWord(rest)
         P(why and ("would be hidden (word \"%s\")."):format(why) or "would be shown.")

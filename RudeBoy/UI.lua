@@ -5,6 +5,10 @@
     masked whenever the window is reopened or you change tabs, so opening the window never
     puts the word list on screen by itself.
 
+    The Hidden tab lists the last lines Rude Boy hid, newest first: time, channel, sender and
+    why. Their text is masked the same way until Show is pressed; hover a shown line for all
+    of it. Preview there leaves would-be-hidden lines in chat with a tag instead, for testing.
+
     The bottom of the window sets how often to be reminded to scan, and About explains
     why guild lists need regular scans.
 
@@ -24,6 +28,8 @@ local TABS = {
       hint = "Add a player by name, or target them and press Add target:" },
     { key = "guilds", label = "Guilds", noun = "guild", add = "AddGuild", remove = "RemoveGuild",
       hint = "Add a guild by name, or target a member and press Add target:" },
+    { key = "log", label = "Hidden", noun = "line", masked = true,
+      hint = "The last lines Rude Boy hid, newest first. Messages stay masked until you press Show." },
 }
 
 local ABOUT = table.concat({
@@ -56,11 +62,24 @@ local function plural(n, noun) return ("%d %s%s"):format(n, noun, n == 1 and "" 
 
 local function entries()
     local list = {}
+    if current.key == "log" then
+        local log = ns.db.log
+        for i = #log, 1, -1 do list[#list + 1] = { log = log[i] } end
+        return list
+    end
     for key, shown in pairs(ns.db[current.key]) do
         list[#list + 1] = { key = key, text = (shown == true) and key or shown }
     end
     table.sort(list, function(a, b) return a.text:lower() < b.text:lower() end)
     return list
+end
+
+-- A Hidden tab row: masked shows only who, where and what kind of rule; shown adds the text.
+local function logLabel(e, masked)
+    if masked then
+        return ("%s  [%s]  %s  (%s)"):format(e.at or "", tostring(e.where), tostring(e.author), tostring(e.kind))
+    end
+    return ("%s  %s: %s"):format(e.at or "", tostring(e.author), tostring(e.msg))
 end
 
 local function setStatus(text, isError)
@@ -73,6 +92,7 @@ function ns.RefreshUI()
     local list = entries()
     offset = math.max(0, math.min(offset, #list - ROWS))
     local masked = current.masked and not revealed
+    local isLog = current.key == "log"
 
     for i, tab in ipairs(ui.tabs) do
         if TABS[i] == current then tab:Disable() else tab:Enable() end
@@ -83,7 +103,15 @@ function ns.RefreshUI()
         local e = list[offset + i]
         row.entry = e
         if e then
-            row.label:SetText(masked and MASK or e.text)
+            if isLog then
+                row.label:SetText(logLabel(e.log, masked))
+                row.label:SetWidth(370)
+                row.remove:Hide()
+            else
+                row.label:SetText(masked and MASK or e.text)
+                row.label:SetWidth(290)
+                row.remove:Show()
+            end
             row:Show()
         else
             row:Hide()
@@ -98,7 +126,21 @@ function ns.RefreshUI()
     end
     if offset > 0 then ui.prev:Enable() else ui.prev:Disable() end
     if offset + ROWS < #list then ui.next:Enable() else ui.next:Disable() end
+    ui.empty:SetText(isLog and "Nothing hidden yet." or "Nothing here yet.")
     if #list == 0 then ui.empty:Show() else ui.empty:Hide() end
+    if isLog then
+        ui.input:Hide()
+        ui.add:Hide()
+        ui.clear:Show()
+        ui.preview:Show()
+        ui.preview:SetText(ns.db.preview and "Preview: ON" or "Preview: OFF")
+        if #list > 0 then ui.clear:Enable() else ui.clear:Disable() end
+    else
+        ui.input:Show()
+        ui.add:Show()
+        ui.clear:Hide()
+        ui.preview:Hide()
+    end
 
     if current.masked and #list > 0 then
         ui.reveal:SetText(revealed and "Hide" or "Show")
@@ -187,6 +229,21 @@ local function removeRow(row)
     end
 end
 
+-- Hovering a shown Hidden tab line gives the whole message.
+local function rowEnter(row)
+    local e = row.entry and row.entry.log
+    if not (e and revealed and GameTooltip) then return end
+    GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
+    GameTooltip:SetText(("%s  [%s]  %s"):format(e.at or "", tostring(e.where), tostring(e.author)), 1, 0.82, 0)
+    GameTooltip:AddLine(tostring(e.msg), 1, 1, 1, true)
+    GameTooltip:AddLine(tostring(e.reason), 0.6, 0.6, 0.6, true)
+    GameTooltip:Show()
+end
+
+local function rowLeave()
+    if GameTooltip then GameTooltip:Hide() end
+end
+
 ---------------------------------------------------------------------------
 -- Building the window
 ---------------------------------------------------------------------------
@@ -250,8 +307,8 @@ local function build()
 
     ui.tabs = {}
     for i, tab in ipairs(TABS) do
-        local b = button(f, tab.label, 110, function() selectTab(tab) end)
-        b:SetPoint("TOPLEFT", 22 + (i - 1) * 130, -46)
+        local b = button(f, tab.label, 90, function() selectTab(tab) end)
+        b:SetPoint("TOPLEFT", 22 + (i - 1) * 96, -46)
         ui.tabs[i] = b
     end
 
@@ -279,6 +336,20 @@ local function build()
         ns.RefreshUI()
     end)
     ui.reveal:SetPoint("TOPLEFT", 24, -126)
+    ui.clear = button(f, "Clear", 90, function()
+        local log = ns.db.log
+        for i = #log, 1, -1 do log[i] = nil end
+        setStatus("Cleared the hidden lines list.")
+        ns.RefreshUI()
+    end)
+    ui.clear:SetPoint("TOPLEFT", 120, -126)
+    ui.preview = button(f, "Preview: OFF", 130, function()
+        ns.db.preview = not ns.db.preview
+        setStatus(ns.db.preview and "Preview on: lines stay in chat, tagged with why they'd be hidden."
+            or "Preview off: matching lines are hidden again.")
+        ns.RefreshUI()
+    end)
+    ui.preview:SetPoint("TOPLEFT", 216, -126)
 
     ui.status = fontString(f)
     ui.status:SetPoint("TOPLEFT", 26, -154)
@@ -299,6 +370,11 @@ local function build()
         row.label:SetPoint("LEFT", 6, 0)
         row.label:SetWidth(290)
         row.label:SetJustifyH("LEFT")
+        row.label:SetHeight(ROW_HEIGHT)
+        if row.label.SetWordWrap then row.label:SetWordWrap(false) end
+        row:EnableMouse(true)
+        row:SetScript("OnEnter", rowEnter)
+        row:SetScript("OnLeave", rowLeave)
         row.remove = button(row, "Remove", 76, function() removeRow(row) end)
         row.remove:SetHeight(20)
         row.remove:SetPoint("RIGHT", -2, 0)

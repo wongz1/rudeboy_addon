@@ -132,6 +132,10 @@ local function boot(opts)
         env.whoTotal = total
         env.fire("WHO_LIST_UPDATE")
     end
+    -- the raw filter call for one chat window, returning everything the filter returns
+    function env.filterRaw(event, msg, author, lineID, channel)
+        return env.filters[event]({}, event, msg, author, "", "", "", "", 0, 0, channel or "", 0, lineID, "Player-1-" .. author)
+    end
     function env.slash(input) _G.SlashCmdList["RUDEBOY"](input) end
     function env.lastPrint() return env.prints[#env.prints] or "" end
     return env
@@ -177,7 +181,7 @@ do
     check(env.chat("CHAT_MSG_SAY", "nice day", "Some One") == false, "clean line is shown")
     check(env.chat("CHAT_MSG_SAY", "my badword", "Me Myself", "Player-1-SELF") == false, "own lines are never hidden")
     check(env.ns.hiddenSession == 1 and env.ns.db.hiddenTotal == 1, "hidden line counted once even with two chat windows")
-    check(#env.ns.log == 1 and env.ns.log[1].author == "Some One", "hidden line logged")
+    check(#env.ns.db.log == 1 and env.ns.db.log[1].author == "Some One", "hidden line logged")
 
     env.slash("player add Troll Face")
     check(env.chat("CHAT_MSG_WHISPER", "hi friend", "Troll Face-Stormrage") == true, "filtered player hidden, realm suffix ignored")
@@ -577,6 +581,68 @@ do
     env.slash("debug")
     local out = table.concat(env.prints, "\n")
     check(out:find('UnitName "Me Myself"') and out:find('sender "Cat", by GUID "Cat Facts"'), "/rb debug shows raw names")
+end
+
+---------------------------------------------------------------------------
+-- Hidden lines list and preview
+---------------------------------------------------------------------------
+do
+    local env = boot()
+    env.slash("word add badword")
+    env.filterRaw("CHAT_MSG_CHANNEL", "buy my badword", "Spam Mer", 500, "Trade")
+    local e = env.ns.db.log[1]
+    check(e and e.where == "Trade" and e.kind == "word" and e.reason == 'word "badword"', "log records channel and why")
+    check(env.filterRaw("CHAT_MSG_SAY", "badword", "No Id", nil) == true, "lines without a line ID are still checked")
+
+    for i = 1, 105 do env.filterRaw("CHAT_MSG_SAY", "badword " .. i, "Loud Mouth", 1000 + i) end
+    check(#env.ns.db.log == 100 and env.ns.db.log[100].msg == "badword 105", "log keeps the newest 100")
+
+
+    -- preview: shown, tagged, not removed; the rest of the arguments pass through
+    env.slash("preview on")
+    local hide, newMsg, author, _, _, _, _, _, _, channel = env.filterRaw("CHAT_MSG_CHANNEL", "more badword", "Spam Mer", 2000, "Trade")
+    check(hide == false and newMsg == '|cff888888[RudeBoy: word "badword"]|r more badword' and author == "Spam Mer"
+        and channel == "Trade", "preview shows the line with a tag")
+    check(env.filterRaw("CHAT_MSG_CHANNEL", "clean", "Spam Mer", 2001, "Trade") == false, "preview leaves clean lines alone")
+    local again = { env.filterRaw("CHAT_MSG_CHANNEL", "more badword", "Spam Mer", 2000, "Trade") }
+    check(again[2] == newMsg and env.ns.db.log[100].msg == "more badword" and env.ns.db.log[99].msg ~= "more badword",
+        "a second chat window gets the same tag, logged once")
+    env.slash("preview off")
+    check(env.filterRaw("CHAT_MSG_SAY", "badword", "X Y", 2002) == true, "preview off hides again")
+
+    -- the Hidden tab
+    env.slash("log clear")
+    check(#env.ns.db.log == 0, "/rb log clear empties the list")
+    env.slash("")
+    local ui = env.ns.ui
+    ui.tabs[4]:Click()
+    check(ui.empty:IsShown() and ui.empty:GetText() == "Nothing hidden yet." and not ui.clear.enabled, "Hidden tab starts empty")
+    check(not ui.input:IsShown() and not ui.add:IsShown() and ui.preview:IsShown(), "no input box on the Hidden tab")
+    env.filterRaw("CHAT_MSG_CHANNEL", "you badword", "Spam Mer", 3000, "Trade")
+    env.filterRaw("CHAT_MSG_SAY", "hello", "Bad Actor", 3001)
+    env.slash("player add Bad Actor")
+    env.filterRaw("CHAT_MSG_SAY", "hello again", "Bad Actor", 3002)
+    check(ui.rows[1].label:GetText() == "12:00  [say]  Bad Actor  (player)", "newest first, masked shows who, where and why")
+    check(ui.rows[2].label:GetText() == "12:00  [Trade]  Spam Mer  (word)", "a masked word line doesn't name the word")
+    check(not ui.rows[1].remove:IsShown(), "no Remove buttons on the Hidden tab")
+    check(ui.count:GetText() == "2 lines (hidden)", "count")
+    ui.reveal:Click()
+    check(ui.rows[2].label:GetText() == "12:00  Spam Mer: you badword", "Show reveals the text")
+    ui.preview:Click()
+    check(env.ns.db.preview and ui.preview:GetText() == "Preview: ON", "Preview button turns preview on")
+    ui.preview:Click()
+    ui.clear:Click()
+    check(#env.ns.db.log == 0 and ui.empty:IsShown(), "Clear empties the list")
+    ui.tabs[1]:Click()
+    check(ui.input:IsShown() and ui.add:IsShown() and not ui.clear:IsShown() and not ui.preview:IsShown(), "other tabs get their input back")
+
+    env.slash("debug")
+    check(env.ns.db.recentAuthors and #env.ns.db.recentAuthors > 0, "recent senders are saved for reading outside the game")
+
+    -- saved: a new session sees the list (boot last, it takes over the globals)
+    env.filterRaw("CHAT_MSG_SAY", "badword", "Last One", 4000)
+    local later = boot({ db = env.ns.db })
+    check(#later.ns.db.log == 1 and later.ns.db.log[1].author == "Last One", "hidden lines are saved")
 end
 
 realPrint(("%d passed, %d failed"):format(passed, failed))

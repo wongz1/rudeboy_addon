@@ -11,6 +11,9 @@
         known        { [normalized name] = { g = "Guild", t = time seen } }
         lastScan     time() the last /rb scan finished
         reminderMinutes  remind to scan when lastScan is older than this (30 to 720)
+        log          the last 100 hidden lines, oldest first (the window's Hidden tab)
+        preview      show would-be-hidden lines with a tag instead of hiding them
+        recentAuthors  the last few chat senders as the game wrote them (/rb debug)
 
     Chat messages don't say which guild the sender is in, so guilds are learned whenever the
     game shows them: your target, mouseover, nameplates, group members and /who results.
@@ -290,6 +293,8 @@ function ns.LoadDB()
     db.known = db.known or {}
     db.hiddenTotal = db.hiddenTotal or 0
     db.reminderMinutes = db.reminderMinutes or 720
+    db.log = db.log or {}
+    if db.preview == nil then db.preview = false end
 
     local cutoff = time() - KNOWN_DAYS * 86400
     for k, v in pairs(db.known) do
