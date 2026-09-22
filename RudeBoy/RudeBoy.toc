@@ -1,0 +1,16 @@
+## Interface: 16001
+## Title: Rude Boy
+## Notes: Hides chat lines that contain your filtered words, or that come from players and guilds you filter, and warns you when one of them is in your group.
+## Author: Zack
+## Version: 0.1.0
+## SavedVariables: RudeBoyDB
+## IconTexture: Interface\Icons\Spell_Holy_Silence
+
+# NOTE: 16001 is copied from CatFacts, which derived it from the WoW Forever beta client 1.60.1.
+# To confirm, run in game:  /run print((select(4, GetBuildInfo())))
+# If the addon shows as "out of date", tick "Load out of date AddOns" on the AddOns screen.
+
+Core.lua
+Chat.lua
+Group.lua
+Commands.lua

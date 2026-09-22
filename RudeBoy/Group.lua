@@ -1,0 +1,181 @@
+--[[
+    Group.lua - learns who is in which guild, and warns you (only you) about filtered people.
+
+    Warnings:
+      * someone on your lists invites you to a group (optionally declined for you)
+      * someone on your lists is in your party or raid, when you join or they do
+
+    Guilds are learned from your target, mouseover, nameplates, group members and /who
+    results. Group members' guilds can load a moment after they join, so the group is
+    checked again a couple of seconds after each change.
+]]
+
+local ADDON, ns = ...
+
+local RECHECK_DELAYS = { 2, 6 }   -- seconds after a group change to look again
+
+local warned = {}                 -- [normalized name] = true, cleared when you leave the group
+local pending = {}                -- times (GetTime) at which to check the group again
+
+---------------------------------------------------------------------------
+-- Warnings
+---------------------------------------------------------------------------
+
+function ns.Alert(text)
+    ns.Print("|cffff3333" .. text .. "|r")
+    if RaidNotice_AddMessage and RaidWarningFrame and ChatTypeInfo then
+        pcall(RaidNotice_AddMessage, RaidWarningFrame, text, ChatTypeInfo["RAID_WARNING"])
+    end
+    if PlaySound then
+        pcall(PlaySound, (SOUNDKIT and SOUNDKIT.RAID_WARNING) or 8959)
+    end
+end
+
+---------------------------------------------------------------------------
+-- Learning guilds
+---------------------------------------------------------------------------
+
+local function learnUnit(unit)
+    if not (UnitExists and UnitExists(unit)) then return end
+    if UnitIsPlayer and not UnitIsPlayer(unit) then return end
+    local name = UnitName(unit)
+    local guild = GetGuildInfo and GetGuildInfo(unit)
+    if name and guild then ns.RememberGuild(name, guild) end
+    return name, guild
+end
+ns.LearnUnit = learnUnit
+
+local function learnWhoResults()
+    if C_FriendList and C_FriendList.GetNumWhoResults and C_FriendList.GetWhoInfo then
+        for i = 1, (C_FriendList.GetNumWhoResults()) or 0 do
+            local info = C_FriendList.GetWhoInfo(i)
+            if info then ns.RememberGuild(info.fullName, info.fullGuildName or "") end
+        end
+    elseif GetNumWhoResults and GetWhoInfo then
+        for i = 1, (GetNumWhoResults()) or 0 do
+            local name, guild = GetWhoInfo(i)
+            ns.RememberGuild(name, guild or "")
+        end
+    end
+end
+
+-- Short /who answers are printed to chat instead of the Who window, as lines like
+-- "|Hplayer:Name|h[Name]|h: Level 60 Human Warrior <Guild> - Zone" (English client).
+function ns.LearnWhoLine(msg)
+    if type(msg) ~= "string" then return end
+    local name, rest = msg:match("^|Hplayer:([^|:]+)[^|]*|h.-|h: Level (.*)$")
+    if not name then return end
+    ns.RememberGuild(name, rest:match("<(.-)>") or "")
+end
+
+---------------------------------------------------------------------------
+-- Group check
+---------------------------------------------------------------------------
+
+local function groupUnits()
+    local units = {}
+    for i = 1, 40 do units[#units + 1] = "raid" .. i end
+    for i = 1, 4 do units[#units + 1] = "party" .. i end
+    return units
+end
+
+-- Checks everyone in your group. `verbose` also reports when nobody matched.
+function ns.CheckGroup(verbose)
+    local me = ns.NormalizeName(UnitName("player"))
+    local seen, found, members = {}, 0, 0
+    for _, unit in ipairs(groupUnits()) do
+        local name, guild = learnUnit(unit)
+        local key = ns.NormalizeName(name)
+        if name and key ~= me and not seen[key] then
+            seen[key] = true
+            members = members + 1
+            local why = ns.PersonReason(name, guild)
+            if why then
+                found = found + 1
+                if verbose or not warned[key] then
+                    warned[key] = true
+                    ns.Alert(("%s is in your group (%s)."):format(name, why))
+                end
+            end
+        end
+    end
+    if members == 0 then warned = {} end
+    if verbose and found == 0 then
+        ns.Print(members == 0 and "you are not in a group." or ("nobody on your lists among %d group members."):format(members))
+    end
+    return found
+end
+
+local function scheduleRechecks()
+    local now = GetTime()
+    for _, d in ipairs(RECHECK_DELAYS) do pending[#pending + 1] = now + d end
+end
+
+local function onInvite(inviter)
+    if not inviter then return end
+    local why = ns.PersonReason(inviter)
+    if not why then return end
+    if ns.db.autoDecline and DeclineGroup then
+        DeclineGroup()
+        if StaticPopup_Hide then StaticPopup_Hide("PARTY_INVITE") end
+        ns.Alert(("Declined a group invite from %s (%s)."):format(inviter, why))
+    else
+        ns.Alert(("%s is inviting you to a group (%s)."):format(inviter, why))
+    end
+end
+
+---------------------------------------------------------------------------
+-- Events
+---------------------------------------------------------------------------
+
+local frame = CreateFrame("Frame")
+ns.groupFrame = frame
+
+local function register(event)
+    -- Not every client has every event, and registering an unknown one is an error.
+    pcall(frame.RegisterEvent, frame, event)
+end
+
+register("PLAYER_LOGIN")
+
+frame:SetScript("OnEvent", function(self, event, ...)
+    if event == "PLAYER_LOGIN" then
+        ns.LoadDB()
+        for _, e in ipairs({
+            "GROUP_ROSTER_UPDATE", "PARTY_MEMBERS_CHANGED", "RAID_ROSTER_UPDATE", "PARTY_INVITE_REQUEST",
+            "PLAYER_TARGET_CHANGED", "UPDATE_MOUSEOVER_UNIT", "NAME_PLATE_UNIT_ADDED",
+            "WHO_LIST_UPDATE", "CHAT_MSG_SYSTEM",
+        }) do register(e) end
+        ns.CheckGroup(false)
+    elseif event == "PARTY_INVITE_REQUEST" then
+        if ns.db.alerts or ns.db.autoDecline then onInvite((...)) end
+    elseif event == "GROUP_ROSTER_UPDATE" or event == "PARTY_MEMBERS_CHANGED" or event == "RAID_ROSTER_UPDATE" then
+        if ns.db.alerts then
+            ns.CheckGroup(false)
+            scheduleRechecks()
+        end
+    elseif event == "PLAYER_TARGET_CHANGED" then
+        learnUnit("target")
+    elseif event == "UPDATE_MOUSEOVER_UNIT" then
+        learnUnit("mouseover")
+    elseif event == "NAME_PLATE_UNIT_ADDED" then
+        learnUnit((...))
+    elseif event == "WHO_LIST_UPDATE" then
+        learnWhoResults()
+    elseif event == "CHAT_MSG_SYSTEM" then
+        ns.LearnWhoLine((...))
+    end
+end)
+
+frame:SetScript("OnUpdate", function()
+    if #pending == 0 then return end
+    local now = GetTime()
+    local due = false
+    for i = #pending, 1, -1 do
+        if now >= pending[i] then
+            table.remove(pending, i)
+            due = true
+        end
+    end
+    if due and ns.db and ns.db.alerts then ns.CheckGroup(false) end
+end)
