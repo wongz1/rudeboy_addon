@@ -46,26 +46,35 @@ end
 ns.LearnUnit = learnUnit
 
 local function learnWhoResults()
+    local num, total
     if C_FriendList and C_FriendList.GetNumWhoResults and C_FriendList.GetWhoInfo then
-        for i = 1, (C_FriendList.GetNumWhoResults()) or 0 do
+        num, total = C_FriendList.GetNumWhoResults()
+        for i = 1, num or 0 do
             local info = C_FriendList.GetWhoInfo(i)
             if info then ns.RememberGuild(info.fullName, info.fullGuildName or "") end
         end
     elseif GetNumWhoResults and GetWhoInfo then
-        for i = 1, (GetNumWhoResults()) or 0 do
+        num, total = GetNumWhoResults()
+        for i = 1, num or 0 do
             local name, guild = GetWhoInfo(i)
             ns.RememberGuild(name, guild or "")
         end
     end
+    if ns.ScanResults then ns.ScanResults(num, total) end
 end
 
 -- Short /who answers are printed to chat instead of the Who window, as lines like
--- "|Hplayer:Name|h[Name]|h: Level 60 Human Warrior <Guild> - Zone" (English client).
+-- "|Hplayer:Name|h[Name]|h: Level 60 Human Warrior <Guild> - Zone" (English client),
+-- ending with "3 players total".
 function ns.LearnWhoLine(msg)
     if type(msg) ~= "string" then return end
     local name, rest = msg:match("^|Hplayer:([^|:]+)[^|]*|h.-|h: Level (.*)$")
-    if not name then return end
-    ns.RememberGuild(name, rest:match("<(.-)>") or "")
+    if name then
+        ns.RememberGuild(name, rest:match("<(.-)>") or "")
+        return
+    end
+    local total = tonumber(msg:match("^(%d+) players? total"))
+    if total and ns.ScanResults then ns.ScanResults(total, total) end
 end
 
 ---------------------------------------------------------------------------

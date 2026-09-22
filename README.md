@@ -35,7 +35,7 @@ If it shows as out of date, tick "Load out of date AddOns" (see the note in `Rud
 /rb guild add [guild]        no guild = your target's guild
 /rb guild remove <guild>
 /rb guild list
-/rb scan [guild]             /who a filtered guild so its online members are learned
+/rb scan [guild]             /who your filtered guilds so their online members are learned
 /rb check                    check your current group now
 /rb alerts on | off          group and invite warnings (on by default)
 /rb autodecline on | off     decline invites from filtered people (off by default)
@@ -69,11 +69,14 @@ guild member it has already seen. It learns guilds from:
 
 - players you target or mouse over, and nameplates
 - your party and raid members
-- `/who` results. `/rb scan <guild>` looks up a guild's online members in one go
-  (the game returns at most 50 per lookup).
+- `/who` results, which is what `/rb scan` uses.
 
-Right after you add a guild, run `/rb scan <guild>` for each guild. Its online members are then
-hidden from that point on. What the addon learns is saved and remembered for 30 days after it
+After adding guilds, run `/rb scan`. One `/who` shows at most 50 people, so a search that comes
+back full is split into one search per class, and a class that is still full is split by level
+range. The addon only lets `/who` run when you press a key or click, so each `/rb scan` sends
+one search. Run it again until it says "Scan finished". A macro on a key makes this one key press
+per search. With no guild name it works through every guild on your list; `/rb scan <guild>` does
+just that guild. Online members are hidden from then on. What the addon learns is saved and remembered for 30 days after it
 last saw each player. A `/who` that shows someone has left the guild clears them.
 
 A guild entry can use `*` too: `Streamer*` covers every guild whose name starts with "Streamer".

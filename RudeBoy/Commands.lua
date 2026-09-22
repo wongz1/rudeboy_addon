@@ -12,7 +12,8 @@
     /rb guild add [guild]        no guild = your target's guild
     /rb guild remove <guild>
     /rb guild list
-    /rb scan [guild]             /who a filtered guild so its online members are learned
+    /rb scan [guild]             /who your filtered guilds so their online members are learned;
+                                 run it again for each next search (big guilds are split up)
     /rb check                    check your current group now
     /rb alerts on | off          group and invite warnings
     /rb autodecline on | off     decline invites from filtered people
@@ -28,7 +29,7 @@ local HELP = {
     "/rb word add <w1, w2, ...> | remove <word> | list",
     "/rb player add [name] | remove <name> | list   (no name = your target)",
     "/rb guild add [guild] | remove <guild> | list   (no guild = your target's guild)",
-    "/rb scan [guild] - /who a filtered guild to learn who is in it",
+    "/rb scan [guild] - /who your guilds to learn who is in them (run again for each next search)",
     "/rb check - check your group now",
     "/rb alerts on | off,  /rb autodecline on | off",
     "/rb log - the last hidden lines,  /rb test <text> - would it be hidden?",
@@ -144,7 +145,7 @@ local function guildCmd(action, arg)
             guild = g
         end
         guilds[ns.NormalizeGuild(guild)] = guild
-        P(("filtering guild <%s>. Use /rb scan %s to learn its online members now."):format(guild, guild))
+        P(("filtering guild <%s>. Run /rb scan to learn its online members now."):format(guild))
     elseif action == "remove" then
         local key = ns.NormalizeGuild(arg)
         if guilds[key] then
@@ -156,30 +157,6 @@ local function guildCmd(action, arg)
     else
         printList("guilds", guilds)
     end
-end
-
-local function scanCmd(arg)
-    local guild = arg
-    if guild == "" then
-        local list = sortedValues(ns.db.guilds)
-        if #list == 0 then P("no guilds on your list.") return end
-        if #list > 1 then
-            P("/who can look up one guild at a time: /rb scan <guild>. Your guilds: " .. table.concat(list, ", "))
-            return
-        end
-        guild = list[1]
-    end
-    if guild:find("*", 1, true) then P("a wildcard entry can't be looked up; give a full guild name.") return end
-    local query = ('g-"%s"'):format(guild)
-    if C_FriendList and C_FriendList.SendWho then
-        C_FriendList.SendWho(query)
-    elseif SendWho then
-        SendWho(query)
-    else
-        P("/who is not available on this client.")
-        return
-    end
-    P(("looking up <%s> with /who (shows at most 50 online members)."):format(guild))
 end
 
 local function toggle(key, value, label)
@@ -218,7 +195,7 @@ SlashCmdList["RUDEBOY"] = function(input)
     elseif cmd == "guild" or cmd == "guilds" then
         guildCmd(action, arg)
     elseif cmd == "scan" then
-        scanCmd(rest)
+        ns.Scan(rest)
     elseif cmd == "check" then
         ns.CheckGroup(true)
     elseif cmd == "alerts" then

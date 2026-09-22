@@ -56,11 +56,12 @@ local function boot(opts)
     _G.RaidWarningFrame, _G.ChatTypeInfo = {}, { RAID_WARNING = {} }
     _G.RaidNotice_AddMessage = function(_, text) env.alerts[#env.alerts + 1] = text end
     _G.PlaySound = function() end
+    _G.UnitFactionGroup = function() return opts.faction or "Horde" end
     _G.DeclineGroup = function() env.declined = env.declined + 1 end
     _G.StaticPopup_Hide = function() end
     _G.C_FriendList = {
         SendWho = function(q) env.whoQuery = q end,
-        GetNumWhoResults = function() return #env.who end,
+        GetNumWhoResults = function() return #env.who, env.whoTotal or #env.who end,
         GetWhoInfo = function(i) return env.who[i] end,
     }
 
@@ -85,6 +86,13 @@ local function boot(opts)
         local b = fn({}, event, msg, author, "", "", "", "", 0, 0, "", 0, env.lineID, guid or ("Player-1-" .. author))
         assert(a == b, "every chat window gets the same answer")
         return a
+    end
+    -- answers the last /who with `total` matches, of which at most 50 are shown
+    function env.whoAnswer(total, guild)
+        env.who = {}
+        for i = 1, math.min(total, 50) do env.who[i] = { fullName = "Member " .. i .. (env.whoQuery or ""), fullGuildName = guild } end
+        env.whoTotal = total
+        env.fire("WHO_LIST_UPDATE")
     end
     function env.slash(input) _G.SlashCmdList["RUDEBOY"](input) end
     function env.lastPrint() return env.prints[#env.prints] or "" end
@@ -198,6 +206,73 @@ do
     saved.known[later.ns.NormalizeName("Fan One")].t = later.clock - 31 * 86400
     local muchLater = boot({ db = saved })
     check(muchLater.ns.GuildOf("Fan One") == nil, "old guild entries expire")
+end
+
+---------------------------------------------------------------------------
+-- /rb scan: big guilds are split into smaller /who searches
+---------------------------------------------------------------------------
+do
+    local env = boot()
+    env.slash("guild add Big Guild")
+    env.slash("scan")
+    check(env.whoQuery == 'g-"Big Guild"', "scan with no name starts with the whole guild")
+    env.whoAnswer(12, "Big Guild")
+    check(env.lastPrint():find("12 found") and env.lastPrint():find("Scan finished"), "a small guild takes one search")
+    check(env.ns.GuildOf("Member 1" .. 'g-"Big Guild"') == "Big Guild", "members learned")
+
+    env.slash("scan")
+    env.whoAnswer(83, "Big Guild")
+    check(env.lastPrint():find("83 online") and env.lastPrint():find("8 searches"), "a full answer is split by class (8 for Horde)")
+    local sent = {}
+    for _ = 1, 20 do
+        if env.lastPrint():find("Scan finished") then break end
+        env.slash("scan")
+        sent[#sent + 1] = env.whoQuery
+        local fullClass = env.whoQuery == 'g-"Big Guild" c-"Warrior"'
+        env.whoAnswer(fullClass and 60 or 10, "Big Guild")
+        if fullClass then check(env.lastPrint():find("Split by level into 4"), "a full class is split by level") end
+    end
+    check(env.lastPrint():find("Scan finished"), "the queue runs out")
+    check(#sent == 12, "8 class searches plus 4 level searches")
+    check(sent[1] == 'g-"Big Guild" c-"Warrior"', "class search syntax")
+    local joined = table.concat(sent, "|")
+    check(not joined:find("Paladin") and joined:find("Shaman"), "Horde skips Paladin, keeps Shaman")
+    check(sent[2] == 'g-"Big Guild" c-"Warrior" 1-29', "level searches come right after the full class")
+
+    local ally = boot({ faction = "Alliance" })
+    ally.slash("guild add Big Guild")
+    ally.slash("scan")
+    ally.whoAnswer(70, "Big Guild")
+    local seen = {}
+    for _ = 1, 8 do ally.slash("scan") seen[#seen + 1] = ally.whoQuery ally.whoAnswer(1, "Big Guild") end
+    seen = table.concat(seen, "|")
+    check(seen:find("Paladin") and not seen:find("Shaman"), "Alliance skips Shaman, keeps Paladin")
+
+    -- several guilds, one search each run; waits for answers; resends a lost search
+    local multi = boot()
+    multi.slash("guild add Alpha")
+    multi.slash("guild add Beta")
+    multi.slash("guild add Gamma*")
+    multi.slash("scan")
+    check(multi.whoQuery == 'g-"Alpha"', "first guild")
+    multi.slash("scan")
+    check(multi.lastPrint():find("still waiting"), "won't send over an unanswered search")
+    multi.now = multi.now + 10
+    multi.slash("scan")
+    check(multi.whoQuery == 'g-"Alpha"', "a search with no answer is sent again")
+    multi.whoAnswer(3, "Alpha")
+    multi.slash("scan")
+    check(multi.whoQuery == 'g-"Beta"', "then the next guild, wildcards skipped")
+    multi.fire("CHAT_MSG_SYSTEM", "2 players total")
+    check(multi.lastPrint():find("2 found") and multi.lastPrint():find("Scan finished"), "answers printed to chat count too")
+
+    -- naming a guild repeatedly carries on with its queued searches
+    local named = boot()
+    named.slash("guild add Big Guild")
+    named.slash("scan big guild")
+    named.whoAnswer(90, "Big Guild")
+    named.slash("scan Big Guild")
+    check(named.whoQuery:find('c%-"'), "/rb scan <guild> again continues the split")
 end
 
 ---------------------------------------------------------------------------
