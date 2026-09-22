@@ -477,5 +477,69 @@ do
     check(not ui.frame:IsShown(), "/rb again closes the window")
 end
 
+---------------------------------------------------------------------------
+-- Scan reminder and About
+---------------------------------------------------------------------------
+do
+    local env = boot()
+    local tick = function(sec) env.ns.reminderFrame.scripts.OnUpdate(env.ns.reminderFrame, sec) end
+    tick(11)
+    check(not env.lastPrint():find("guild lists"), "no reminder with no guilds on the list")
+
+    env.slash("guild add Big Guild")
+    check(env.ns.db.reminderMinutes == 720, "reminder defaults to 12 hours")
+    tick(61)
+    check(env.lastPrint() :find("haven't been scanned yet"), "reminds when never scanned")
+    local n = #env.prints
+    tick(61)
+    check(#env.prints == n, "not repeated within the interval")
+
+    env.slash("scan")
+    env.whoAnswer(5, "Big Guild")
+    check(env.ns.db.lastScan == env.clock, "a finished scan is timed")
+    env.clock = env.clock + 3600
+    tick(61)
+    check(#env.prints == n + 2, "no reminder while the scan is newer than 12 hours")
+
+    env.slash("reminder 30")
+    check(env.ns.db.reminderMinutes == 30 and env.lastPrint():find("every 30 minutes"), "/rb reminder sets it")
+    tick(61)
+    check(env.lastPrint():find("Your guild lists are 1 hour old, run /rb scan%."), "reminds with the age")
+    n = #env.prints
+    env.clock = env.clock + 20 * 60
+    tick(61)
+    check(#env.prints == n, "at most once per interval")
+    env.clock = env.clock + 11 * 60
+    tick(61)
+    check(env.lastPrint():find("1 hour old"), "and again after it")
+
+    check(env.ns.SetReminder(5) == 30 and env.ns.SetReminder(5000) == 720, "reminder kept between 30 minutes and 12 hours")
+    check(env.ns.SetReminder(80) == 90 and env.ns.SetReminder(74) == 60, "reminder rounded to 30 minute steps")
+    check(env.ns.FormatInterval(90) == "1.5 hours" and env.ns.FormatInterval(60) == "1 hour", "interval wording")
+
+    -- the window
+    env.slash("")
+    local ui = env.ns.ui
+    env.ns.SetReminder(60)
+    check(ui.reminder:GetText() == "Remind me to scan every 1 hour", "window shows the reminder")
+    check(ui.lastScan:GetText() == "Last scan: 1 hour ago", "window shows the last scan")
+    ui.less:Click()
+    check(env.ns.db.reminderMinutes == 30 and not ui.less.enabled, "- goes down to 30 minutes and stops")
+    for _ = 1, 30 do ui.more:Click() end
+    check(env.ns.db.reminderMinutes == 720 and not ui.more.enabled and ui.less.enabled, "+ goes up to 12 hours and stops")
+    check(ui.reminder:GetText() == "Remind me to scan every 12 hours", "12 hours wording")
+
+    check(not ui.about:IsShown(), "About starts closed")
+    ui.aboutButton:Click()
+    check(ui.about:IsShown() and ui.aboutText:GetText():find("not a blanket block")
+        and ui.aboutText:GetText():find("offline"), "About explains guild lists need regular scans")
+    ui.aboutBack:Click()
+    check(not ui.about:IsShown(), "Back closes About")
+    ui.aboutButton:Click()
+    ui.frame:Hide()
+    env.slash("")
+    check(not ui.about:IsShown(), "About is closed when the window reopens")
+end
+
 realPrint(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

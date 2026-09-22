@@ -5,6 +5,9 @@
     masked whenever the window is reopened or you change tabs, so opening the window never
     puts the word list on screen by itself.
 
+    The bottom of the window sets how often to be reminded to scan, and About explains
+    why guild lists need regular scans.
+
     Built the first time it is opened. Escape closes it.
 ]]
 
@@ -22,6 +25,26 @@ local TABS = {
     { key = "guilds", label = "Guilds", noun = "guild", add = "AddGuild", remove = "RemoveGuild",
       hint = "Add a guild by name, or target a member and press Add target:" },
 }
+
+local ABOUT = table.concat({
+    "|cffffd100What Rude Boy does|r",
+    "Hides chat lines that contain your words, or that come from players and guilds on your lists, "
+        .. "and warns you when one of them invites you or is in your group. Only you see any of this.",
+    "",
+    "|cffffd100Guild filtering is not a blanket block|r",
+    "Chat doesn't say which guild someone is in. Rude Boy learns who is in a guild only when it "
+        .. "sees them: your target, mouseover, nameplates, your group, and /who scans. Adding a guild "
+        .. "does not find all of its members. Members who were offline at your last scan, or joined the "
+        .. "guild since, get through until they are seen.",
+    "",
+    "|cffffd100Scan regularly|r",
+    "Press Scan on the Guilds tab (or type /rb scan). Each press sends one /who search. Big guilds "
+        .. "are split by class and level, so keep pressing until it says Scan finished. /who only finds "
+        .. "players who are online, so scanning at different times of day catches more members. The scan "
+        .. "reminder below tells you when your lists are getting old.",
+    "",
+    "Members are remembered for 30 days after they were last seen.",
+}, "\n")
 
 local ui = {}           -- the widgets, also reached by the tests as ns.ui
 ns.ui = ui
@@ -90,6 +113,13 @@ function ns.RefreshUI()
     ui.checks.alerts:SetChecked(ns.db.alerts)
     ui.checks.autoDecline:SetChecked(ns.db.autoDecline)
     ui.hidden:SetText(("Hidden this session: %d"):format(ns.hiddenSession or 0))
+
+    local minutes = ns.db.reminderMinutes
+    ui.reminder:SetText("Remind me to scan every " .. ns.FormatInterval(minutes))
+    if minutes > ns.REMINDER_MIN then ui.less:Enable() else ui.less:Disable() end
+    if minutes < ns.REMINDER_MAX then ui.more:Enable() else ui.more:Disable() end
+    ui.lastScan:SetText(ns.db.lastScan and ("Last scan: %s ago"):format(ns.FormatAge(time() - ns.db.lastScan))
+        or "Last scan: never")
 end
 
 local function selectTab(tab)
@@ -189,7 +219,7 @@ end
 local function build()
     local f = CreateFrame("Frame", "RudeBoyFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
     ui.frame = f
-    f:SetSize(430, 500)
+    f:SetSize(430, 530)
     f:SetPoint("CENTER")
     f:SetFrameStrata("DIALOG")
     f:SetClampedToScreen(true)
@@ -213,6 +243,10 @@ local function build()
     title:SetText("Rude Boy")
     local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", -6, -6)
+    ui.aboutButton = button(f, "About", 64, function()
+        if ui.about:IsShown() then ui.about:Hide() else ui.about:Show() end
+    end)
+    ui.aboutButton:SetPoint("TOPLEFT", 18, -14)
 
     ui.tabs = {}
     for i, tab in ipairs(TABS) do
@@ -294,8 +328,43 @@ local function build()
         alerts = checkbox(f, "Group warnings", "alerts", 152, checksY),
         autoDecline = checkbox(f, "Decline invites", "autoDecline", 282, checksY),
     }
+    local reminderY = checksY - 32
+    ui.less = button(f, "-", 24, function() ns.SetReminder(ns.db.reminderMinutes - ns.REMINDER_STEP) end)
+    ui.less:SetPoint("TOPLEFT", 24, reminderY)
+    ui.more = button(f, "+", 24, function() ns.SetReminder(ns.db.reminderMinutes + ns.REMINDER_STEP) end)
+    ui.more:SetPoint("TOPLEFT", 50, reminderY)
+    ui.reminder = fontString(f)
+    ui.reminder:SetPoint("TOPLEFT", 82, reminderY - 5)
+    ui.lastScan = fontString(f, "GameFontDisableSmall")
+    ui.lastScan:SetPoint("TOPRIGHT", -28, reminderY - 5)
+
     ui.hidden = fontString(f, "GameFontDisableSmall")
     ui.hidden:SetPoint("BOTTOMLEFT", 26, 20)
+
+    -- About: a panel laid over the lists until closed
+    local about = CreateFrame("Frame", nil, f, BackdropTemplateMixin and "BackdropTemplate" or nil)
+    ui.about = about
+    about:SetPoint("TOPLEFT", 14, -40)
+    about:SetPoint("BOTTOMRIGHT", -14, 14)
+    about:SetFrameLevel((f:GetFrameLevel() or 0) + 10)
+    about:EnableMouse(true)
+    if about.SetBackdrop then
+        about:SetBackdrop({
+            bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+            tile = true, tileSize = 16, edgeSize = 16,
+            insets = { left = 4, right = 4, top = 4, bottom = 4 },
+        })
+    end
+    ui.aboutText = fontString(about, "GameFontHighlight")
+    ui.aboutText:SetPoint("TOPLEFT", 16, -16)
+    ui.aboutText:SetWidth(368)
+    ui.aboutText:SetJustifyH("LEFT")
+    ui.aboutText:SetJustifyV("TOP")
+    ui.aboutText:SetText(ABOUT)
+    ui.aboutBack = button(about, "Back", 90, function() about:Hide() end)
+    ui.aboutBack:SetPoint("BOTTOM", 0, 14)
+    about:Hide()
 
     f:SetScript("OnShow", function()
         revealed = false
@@ -305,6 +374,7 @@ local function build()
     end)
     f:SetScript("OnHide", function()
         revealed = false
+        ui.about:Hide()
         ui.input:ClearFocus()
     end)
     f:Hide()

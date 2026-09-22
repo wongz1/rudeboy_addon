@@ -9,6 +9,8 @@
         players      { [normalized name] = "Shown Name" }
         guilds       { [normalized guild] = "Shown Guild" }
         known        { [normalized name] = { g = "Guild", t = time seen } }
+        lastScan     time() the last /rb scan finished
+        reminderMinutes  remind to scan when lastScan is older than this (30 to 720)
 
     Chat messages don't say which guild the sender is in, so guilds are learned whenever the
     game shows them: your target, mouseover, nameplates, group members and /who results.
@@ -248,6 +250,7 @@ function ns.LoadDB()
     db.guilds = db.guilds or {}
     db.known = db.known or {}
     db.hiddenTotal = db.hiddenTotal or 0
+    db.reminderMinutes = db.reminderMinutes or 720
 
     local cutoff = time() - KNOWN_DAYS * 86400
     for k, v in pairs(db.known) do

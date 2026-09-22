@@ -6,6 +6,10 @@
     and the smaller searches are queued. Each /rb scan sends the next search in the queue
     (the game only lets an addon send /who from a key press or click, so it can't run on
     its own). With no guild name, /rb scan works through every guild on your list.
+
+    Scan reminder: when a scan finishes its time is saved. At login, and every minute while
+    you play, a chat reminder is printed if that is older than your reminder setting (30
+    minutes to 12 hours), at most once per that interval.
 ]]
 
 local ADDON, ns = ...
@@ -91,6 +95,10 @@ function ns.ScanResults(num, total)
     else
         P(("%s: %d found. %s"):format(describe(s), count, remaining()))
     end
+    if #queue == 0 then
+        ns.db.lastScan = time()
+        ns.Changed()
+    end
 end
 
 local function sortedGuilds()
@@ -132,3 +140,61 @@ function ns.Scan(guild)
     local s = table.remove(queue, 1)
     if send(s) then P(("looking up %s..."):format(describe(s))) end
 end
+
+---------------------------------------------------------------------------
+-- Scan reminder
+---------------------------------------------------------------------------
+
+ns.REMINDER_MIN, ns.REMINDER_MAX, ns.REMINDER_STEP = 30, 720, 30   -- minutes
+local FIRST_CHECK = 10    -- seconds after loading, so the reminder isn't lost in login messages
+local CHECK_EVERY = 60
+
+-- Rounds to the nearest step and keeps it in range.
+function ns.SetReminder(minutes)
+    local step = ns.REMINDER_STEP
+    local m = math.floor(((tonumber(minutes) or ns.REMINDER_MAX) + step / 2) / step) * step
+    ns.db.reminderMinutes = math.max(ns.REMINDER_MIN, math.min(ns.REMINDER_MAX, m))
+    ns.Changed()
+    return ns.db.reminderMinutes
+end
+
+function ns.FormatInterval(minutes)
+    if minutes < 60 then return ("%d minutes"):format(minutes) end
+    local h = minutes / 60
+    if h == math.floor(h) then return ("%d hour%s"):format(h, h == 1 and "" or "s") end
+    return ("%.1f hours"):format(h)
+end
+
+function ns.FormatAge(seconds)
+    local m = math.floor(seconds / 60)
+    if m < 60 then return ("%d minute%s"):format(m, m == 1 and "" or "s") end
+    local h = math.floor(m / 60)
+    return ("%d hour%s"):format(h, h == 1 and "" or "s")
+end
+
+local lastReminder    -- time() of the last reminder this session
+
+function ns.CheckReminder()
+    if not ns.db or #sortedGuilds() == 0 then return end
+    local now = time()
+    local interval = ns.db.reminderMinutes * 60
+    local age = ns.db.lastScan and now - ns.db.lastScan
+    if age and age < interval then return end
+    if lastReminder and now - lastReminder < interval then return end
+    lastReminder = now
+    if age then
+        P(("Your guild lists are %s old, run /rb scan."):format(ns.FormatAge(age)))
+    else
+        P("Your guild lists haven't been scanned yet, run /rb scan.")
+    end
+end
+
+local ticker = CreateFrame("Frame")
+ns.reminderFrame = ticker
+local wait = FIRST_CHECK
+ticker:SetScript("OnUpdate", function(_, elapsed)
+    wait = wait - (elapsed or 0)
+    if wait > 0 then return end
+    wait = CHECK_EVERY
+    ns.CheckReminder()
+end)

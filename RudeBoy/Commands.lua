@@ -18,6 +18,7 @@
     /rb check                    check your current group now
     /rb alerts on | off          group and invite warnings
     /rb autodecline on | off     decline invites from filtered people
+    /rb reminder <minutes>       remind to scan when the last scan is older (30 to 720)
     /rb log                      the last hidden lines, with their text
     /rb test <text>              would this line be hidden?
 ]]
@@ -33,7 +34,7 @@ local HELP = {
     "/rb guild add [guild] | remove <guild> | list   (no guild = your target's guild)",
     "/rb scan [guild] - /who your guilds to learn who is in them (run again for each next search)",
     "/rb check - check your group now",
-    "/rb alerts on | off,  /rb autodecline on | off",
+    "/rb alerts on | off,  /rb autodecline on | off,  /rb reminder <minutes, 30 to 720>",
     "/rb log - the last hidden lines,  /rb test <text> - would it be hidden?",
 }
 
@@ -183,6 +184,9 @@ SlashCmdList["RUDEBOY"] = function(input)
         toggle("alerts", action, "group alerts")
     elseif cmd == "autodecline" then
         toggle("autoDecline", action, "auto-decline invites")
+    elseif cmd == "reminder" then
+        if action ~= "" then ns.SetReminder(tonumber(action)) end
+        P("scan reminder: every " .. ns.FormatInterval(ns.db.reminderMinutes) .. ".")
     elseif cmd == "log" then
         printLog()
     elseif cmd == "test" then

@@ -24,7 +24,8 @@ If it shows as out of date, tick "Load out of date AddOns" (see the note in `Rud
 Type `/rb` to open it (again, or Escape, to close). It has a tab each for **Words**, **Players**
 and **Guilds**: type into the box and press Add (or Enter), and each entry has a Remove button.
 Players and Guilds also have **Add target**, and Guilds has **Scan** (see below). Checkboxes at
-the bottom turn chat hiding, group warnings and invite declining on and off.
+the bottom turn chat hiding, group warnings and invite declining on and off, and `-` / `+` set
+the scan reminder. **About** explains what the addon does and why guild lists need regular scans.
 
 The Words tab never shows your words on its own: every entry reads `********` until you press
 **Show**, and they are masked again when you reopen the window or switch tabs. Adding or removing
@@ -51,6 +52,7 @@ words from the window reports how many, not which.
 /rb check                    check your current group now
 /rb alerts on | off          group and invite warnings (on by default)
 /rb autodecline on | off     decline invites from filtered people (off by default)
+/rb reminder <minutes>       how old a scan gets before you're reminded (30 to 720, default 720)
 /rb log                      the last 20 hidden lines, with their text
 /rb test <text>              would this line be hidden by your word list?
 ```
@@ -90,6 +92,12 @@ one search. Run it again until it says "Scan finished". A macro on a key makes t
 per search. With no guild name it works through every guild on your list; `/rb scan <guild>` does
 just that guild. Online members are hidden from then on. What the addon learns is saved and remembered for 30 days after it
 last saw each player. A `/who` that shows someone has left the guild clears them.
+
+**Scan reminder.** Each finished scan is timed. At login, and while you play, Rude Boy prints
+"Your guild lists are X hours old, run /rb scan" in chat once your last scan is older than your
+reminder setting: anything from 30 minutes to 12 hours in 30 minute steps (default 12 hours). It
+won't repeat more than once per that interval. It can only remind you; the scan itself needs your
+key press or click.
 
 A guild entry can use `*` too: `Streamer*` covers every guild whose name starts with "Streamer".
 `/rb scan` skips wildcard entries, since `/who` needs a full guild name.
