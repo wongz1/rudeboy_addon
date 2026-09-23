@@ -661,5 +661,16 @@ do
     check(later.ns.db.hiddenTotal == env.ns.db.hiddenTotal and later.ns.hiddenSession == 0, "lifetime count is saved, session count starts over")
 end
 
+---------------------------------------------------------------------------
+-- Release checks
+---------------------------------------------------------------------------
+do
+    local toc = io.open(ADDON_DIR .. "RudeBoy.toc"):read("*a")
+    local tocVersion = toc:match("## Version: *([^\r\n]+)")
+    check(tocVersion == boot().ns.VERSION, ("the .toc version (%s) matches ns.VERSION in Core.lua"):format(tostring(tocVersion)))
+    local changelog = io.open("CHANGELOG.md") and io.open("CHANGELOG.md"):read("*a") or ""
+    check(changelog:find("## " .. tostring(tocVersion):gsub("%.", "%%."), 1) ~= nil, "CHANGELOG.md has a section for this version")
+end
+
 realPrint(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

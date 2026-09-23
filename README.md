@@ -16,8 +16,11 @@ guild, officer, party, raid and battleground chat. Your own lines are never hidd
 
 ## Install
 
-Copy the `RudeBoy` folder into the game's `Interface/AddOns` folder and restart the client.
-If it shows as out of date, tick "Load out of date AddOns" (see the note in `RudeBoy/RudeBoy.toc`).
+Download `RudeBoy-<version>.zip` from the [Releases page](https://github.com/wongz1/rudeboy_addon/releases)
+and unzip it into the game's `Interface/AddOns` folder, so you get `Interface/AddOns/RudeBoy/`.
+Restart the game. If it shows as out of date, tick "Load out of date AddOns" on the AddOns screen.
+
+From a copy of this repo, copy (or symlink) the `RudeBoy` folder instead.
 
 ## The window
 
@@ -116,6 +119,11 @@ key press or click.
 A guild entry can use `*` too: `Streamer*` covers every guild whose name starts with "Streamer".
 `/rb scan` skips wildcard entries, since `/who` needs a full guild name.
 
+## Releasing
+
+See [RELEASING.md](RELEASING.md). Tagging `vX.Y.Z` builds the zip and publishes it; changes are
+listed in [CHANGELOG.md](CHANGELOG.md).
+
 ## Tests
 
 The addon runs outside the game against a mocked WoW API:
@@ -134,3 +142,7 @@ luajit tests/run.lua
   player; "Cat" alone is not. Chat senders are also checked by the name the game gives for their
   GUID, in case a line shows them another way. `/rb debug` prints exactly what the game returns.
 - The `/who` line format used to learn guilds from chat is the English client's.
+
+## License
+
+MIT, see [LICENSE](LICENSE).

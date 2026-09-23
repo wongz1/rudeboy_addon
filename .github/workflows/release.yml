@@ -1,0 +1,41 @@
+# Builds RudeBoy-<version>.zip when a version tag (v0.1.0, v0.2.0, ...) is pushed, and
+# publishes it to GitHub Releases. It also uploads to CurseForge, Wago and WoWInterface
+# for each site whose token is set as a repository secret (see RELEASING.md); sites without
+# a token are skipped.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
+      CF_API_KEY: ${{ secrets.CF_API_KEY }}
+      WAGO_API_TOKEN: ${{ secrets.WAGO_API_TOKEN }}
+      WOWI_API_TOKEN: ${{ secrets.WOWI_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install LuaJIT
+        run: sudo apt-get update && sudo apt-get install -y luajit
+
+      - name: Run tests
+        run: luajit tests/run.lua
+
+      - name: Check the tag matches the addon version
+        run: |
+          toc=$(sed -n 's/^## Version: *//p' RudeBoy/RudeBoy.toc | tr -d '\r')
+          if [ "v$toc" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag is $GITHUB_REF_NAME but RudeBoy/RudeBoy.toc says version $toc. Bump the version first (RELEASING.md)."
+            exit 1
+          fi
+
+      - name: Package and publish
+        uses: BigWigsMods/packager@v2
