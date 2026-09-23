@@ -358,7 +358,9 @@ end
 local function build()
     local f = CreateFrame("Frame", "RudeBoyFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
     ui.frame = f
-    f:SetSize(430, 556)
+    -- height: list ends at 400, three rows of checkboxes to 510, reminder row to 540,
+    -- then the two-line lifetime text above the bottom edge
+    f:SetSize(430, 590)
     f:SetPoint("CENTER")
     f:SetFrameStrata("DIALOG")
     f:SetClampedToScreen(true)
