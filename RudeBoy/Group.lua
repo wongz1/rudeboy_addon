@@ -163,6 +163,13 @@ end
 
 register("PLAYER_LOGIN")
 register("PLAYER_LOGOUT")
+register("ADDON_LOADED")
+register("PLAYER_ENTERING_WORLD")
+
+-- When the saved settings turned up, for /rb debug: "ADDON_LOADED", "PLAYER_LOGIN", "late (12s)"...
+ns.dbSeenAt = nil
+local watchUntil        -- GetTime() until which the global is watched for a late hand-over
+local loginAt
 
 -- One line at login saying whether saved settings came back from disk, to tell a saving
 -- problem from a loading one.
@@ -178,10 +185,22 @@ local function announce()
 end
 
 frame:SetScript("OnEvent", function(self, event, ...)
-    if event == "PLAYER_LOGIN" then
+    if event == "ADDON_LOADED" then
+        if (...) == ADDON and RudeBoyDB ~= nil and not ns.dbSeenAt then ns.dbSeenAt = "ADDON_LOADED" end
+    elseif event == "PLAYER_LOGIN" then
         ns.loadedFromDisk = RudeBoyDB ~= nil
+        if ns.loadedFromDisk and not ns.dbSeenAt then ns.dbSeenAt = "PLAYER_LOGIN" end
         ns.LoadDB()
         announce()
+        loginAt = GetTime()
+        if not ns.loadedFromDisk then watchUntil = loginAt + 60 end
+    elseif event == "PLAYER_ENTERING_WORLD" then
+        if ns.AdoptLateDB() then
+            ns.dbSeenAt = "PLAYER_ENTERING_WORLD"
+            ns.loadedFromDisk = true
+            ns.Print("the game handed over the saved settings late (at PLAYER_ENTERING_WORLD); adopted them.")
+            announce()
+        end
         for _, e in ipairs({
             "GROUP_ROSTER_UPDATE", "PARTY_MEMBERS_CHANGED", "RAID_ROSTER_UPDATE", "PARTY_INVITE_REQUEST",
             "GUILD_INVITE_REQUEST",
@@ -216,6 +235,18 @@ frame:SetScript("OnEvent", function(self, event, ...)
 end)
 
 frame:SetScript("OnUpdate", function()
+    if watchUntil then
+        if ns.AdoptLateDB() then
+            local secs = math.floor(GetTime() - (loginAt or GetTime()))
+            ns.dbSeenAt = ("late (%ds after login)"):format(secs)
+            ns.loadedFromDisk = true
+            watchUntil = nil
+            ns.Print(("the game handed over the saved settings %d seconds after login; adopted them."):format(secs))
+            announce()
+        elseif GetTime() > watchUntil then
+            watchUntil = nil
+        end
+    end
     if #pending == 0 then return end
     local now = GetTime()
     local due = false

@@ -760,6 +760,28 @@ do
     check(fresh.prints[1]:find("no saved settings found"), "login says when nothing was on disk")
     fresh.fire("PLAYER_LOGOUT")
     check(fresh.ns.db.savedAt == "12:00", "logout stamps the save time")
+    -- saved settings handed over after login: adopted, with the session's additions kept
+    local late = boot()
+    late.slash("word add sessionword")
+    late.filterRaw("CHAT_MSG_SAY", "sessionword", "Some One", 7000)
+    local savedCopy = { words = { oldword = true }, players = { oldplayer = "Old Player" }, guilds = {}, known = {},
+        hiddenTotal = 40, hiddenByKind = { word = 40, player = 0, guild = 0 }, log = {}, exempt = {},
+        enabled = true, alerts = true, savedAt = "yesterday" }
+    _G.RudeBoyDB = savedCopy
+    late.fire("PLAYER_ENTERING_WORLD")
+    check(late.ns.db == savedCopy and late.ns.loadedFromDisk, "late saved settings are adopted")
+    check(late.ns.db.words.oldword and late.ns.db.words.sessionword and late.ns.db.players.oldplayer, "lists from both are kept")
+    check(late.ns.db.hiddenTotal == 41 and late.ns.db.hiddenByKind.word == 41 and #late.ns.db.log == 1, "counts and log are merged")
+    check(late.ns.MatchWord("oldword") == "oldword", "the adopted words are compiled")
+    check(late.lastPrint():find("settings loaded") and late.prints[#late.prints - 1]:find("handed over the saved settings late"), "it says so")
+    late.fire("PLAYER_ENTERING_WORLD")
+    check(late.ns.db.hiddenTotal == 41, "adopting is a one-off")
+    local watched = boot()
+    _G.RudeBoyDB = { words = { fromdisk = true } }
+    watched.now = watched.now + 12
+    watched.update()
+    check(watched.ns.db.words.fromdisk and watched.ns.dbSeenAt == "late (12s after login)", "a hand-over within a minute of login is caught by the watcher")
+
     local again = boot({ db = fresh.ns.db })
     check(again.prints[1]:find("settings loaded") and again.prints[1]:find("last saved 12:00"), "login says settings loaded and when saved")
 end

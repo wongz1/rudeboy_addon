@@ -358,3 +358,22 @@ function ns.LoadDB()
     ns.db = db
     ns.RebuildWords()
 end
+
+-- If the game hands the saved table over after the addon has already started fresh, the global
+-- RudeBoyDB stops being the table the addon works on. This adopts the saved one and carries the
+-- fresh session's lists and counts into it, so nothing done since login is lost.
+function ns.AdoptLateDB()
+    local fresh, saved = ns.db, RudeBoyDB
+    if not fresh or not saved or saved == fresh then return false end
+    ns.LoadDB()   -- fills in any missing defaults on the saved table, and points ns.db at it
+    local db = ns.db
+    for _, list in ipairs({ "words", "players", "guilds", "exempt", "known" }) do
+        for k, v in pairs(fresh[list] or {}) do db[list][k] = v end
+    end
+    for _, e in ipairs(fresh.log or {}) do db.log[#db.log + 1] = e end
+    db.hiddenTotal = db.hiddenTotal + (fresh.hiddenTotal or 0)
+    for kind, n in pairs(fresh.hiddenByKind or {}) do db.hiddenByKind[kind] = (db.hiddenByKind[kind] or 0) + n end
+    ns.RebuildWords()
+    ns.Changed()
+    return true
+end
