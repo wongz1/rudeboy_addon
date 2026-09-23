@@ -4,7 +4,8 @@
     RudeBoyDB (account wide, so every character shares the same lists):
         enabled      hide chat lines (true/false)
         alerts       warn about filtered people in your group or inviting you
-        autoDecline  decline group invites from filtered people
+        autoDecline  decline party invites from filtered people
+        declineGuild decline guild invites from filtered people or filtered guilds
         words        { [entry] = true }                 words and phrases, see ns.CompileWord
         players      { [normalized name] = "Shown Name" }
         guilds       { [normalized guild] = "Shown Guild" }
@@ -335,6 +336,7 @@ function ns.LoadDB()
     if db.enabled == nil then db.enabled = true end
     if db.alerts == nil then db.alerts = true end
     if db.autoDecline == nil then db.autoDecline = false end
+    if db.declineGuild == nil then db.declineGuild = false end
     db.words = db.words or {}
     db.players = db.players or {}
     db.guilds = db.guilds or {}

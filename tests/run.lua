@@ -339,6 +339,26 @@ do
     env.fire("PARTY_INVITE_REQUEST", "Nice Person")
     check(env.declined == 1 and #env.alerts == 2, "other invites are left alone")
 
+    -- guild invites: from a blocked person, or from a blocked guild
+    _G.DeclineGuild = function() env.guildDeclined = (env.guildDeclined or 0) + 1 end
+    env.fire("GUILD_INVITE_REQUEST", "Bad Actor", "Some Guild")
+    check(#env.alerts == 3 and env.alerts[3]:find("Bad Actor <Some Guild> is inviting you to their guild %(player on your list%)"), "warned about a guild invite from a blocked person")
+    env.fire("GUILD_INVITE_REQUEST", "Nice Person", "Streamer Army")
+    check(#env.alerts == 4 and env.alerts[4]:find("guild on your list"), "warned about a guild invite from a blocked guild")
+    env.fire("GUILD_INVITE_REQUEST", "Nice Person", "Nice Guild")
+    check(#env.alerts == 4 and not env.guildDeclined, "other guild invites are left alone, nothing declined yet")
+    env.slash("decline guild on")
+    check(env.ns.db.declineGuild == true, "/rb decline guild on")
+    env.fire("GUILD_INVITE_REQUEST", "Nice Person", "Streamer Army")
+    check(env.guildDeclined == 1 and env.alerts[5]:find("Declined a guild invite"), "guild invite from a blocked guild declined")
+    env.fire("GUILD_INVITE_REQUEST", "Nice Person", "Nice Guild")
+    check(env.guildDeclined == 1, "guild invites from others still not declined")
+    env.slash("decline party off")
+    check(env.ns.db.autoDecline == false, "/rb decline party off")
+    env.slash("autodecline on")
+    check(env.ns.db.autoDecline == true, "/rb autodecline still works")
+    for i = #env.alerts, 3, -1 do env.alerts[i] = nil end   -- back to the two party-invite alerts for the checks below
+
     env.units.party1 = { name = "Nice Person" }
     env.units.party2 = { name = "Guild Minion", guild = "Streamer Army" }
     env.fire("GROUP_ROSTER_UPDATE")
@@ -480,6 +500,9 @@ do
     ui.rows[1].remove:Click()
     check(env.ns.IsGuildFiltered("Bad Guild") == nil and ui.status:GetText() == "Removed Bad Guild.", "guild removed by its row")
 
+    ui.checks.declineGuild:SetChecked(true)
+    ui.checks.declineGuild:Click()
+    check(env.ns.db.declineGuild == true, "Decline guild invites checkbox")
     ui.checks.enabled:SetChecked(false)
     ui.checks.enabled:Click()
     check(env.ns.db.enabled == false, "Hide chat checkbox turns hiding off")

@@ -10,6 +10,8 @@ It never sends anything to chat, and nobody else can tell you are using it.
   when someone on your player or guild list:
   - invites you to a group. You can have those invites declined for you automatically.
   - is in your party or raid when you join, or joins after you.
+  - invites you to a guild, or the inviting guild is on your guild list. These can be declined
+    automatically too, separately from party invites.
 
 Filtering covers say, yell, emotes, whispers, all channels (General, Trade, LookingForGroup, World),
 guild, officer, party, raid and battleground chat. Your own lines are never hidden.
@@ -33,7 +35,7 @@ of a guild on your guild list (otherwise you can't see who the guild filter is c
 **Exempt** on a row to let that person through anyway, for someone you get on with in a guild you
 block. Exempt people stay at the top of the tab with an **Unexempt** button. Words still apply to
 what they say. Checkboxes at
-the bottom turn chat hiding, group warnings and invite declining on and off, and `-` / `+` set
+the bottom turn chat hiding, warnings, and declining of party and guild invites on and off, and `-` / `+` set
 the scan reminder. **About** explains what the addon does and why guild lists need regular scans.
 
 The Words tab never shows your words on its own: every entry reads `********` until you press
@@ -75,7 +77,8 @@ words from the window reports how many, not which.
 /rb scan [guild]             /who your filtered guilds so their online members are learned
 /rb check                    check your current group now
 /rb alerts on | off          group and invite warnings (on by default)
-/rb autodecline on | off     decline invites from filtered people (off by default)
+/rb decline party on | off   decline party invites from filtered people (off by default; /rb autodecline works too)
+/rb decline guild on | off   decline guild invites from filtered people or filtered guilds (off by default)
 /rb reminder <minutes>       how old a scan gets before you're reminded (30 to 720, default 720)
 /rb log [clear]              the last 20 hidden lines in chat, with their text (or clear the list)
 /rb preview on | off         leave would-be-hidden lines in chat with a grey tag, for testing

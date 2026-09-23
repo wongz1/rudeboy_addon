@@ -11,8 +11,9 @@ First release, for WoW Forever.
 - Hide every line from members of guilds on your list. Members are learned from targets,
   mouseover, nameplates, groups and `/who`; `/rb scan` looks guilds up, splitting big guilds by
   class and level to get past the 50 result limit of `/who`.
-- Private warning when a filtered player or guild member invites you or is in your group, with
-  optional automatic declining of their invites.
+- Private warning when a filtered player or guild member invites you or is in your group, or a
+  filtered person or guild invites you to a guild. Party and guild invites can each be declined
+  automatically.
 - Window (`/rb`) with Words, Players, Guilds and Hidden tabs. Words and hidden messages stay
   masked until you press Show.
 - Hidden tab listing the last 100 hidden lines, and a preview mode that tags lines instead of

@@ -3,6 +3,7 @@
 
     Warnings:
       * someone on your lists invites you to a group (optionally declined for you)
+      * someone on your lists, or a guild on your list, invites you to a guild (optionally declined)
       * someone on your lists is in your party or raid, when you join or they do
 
     Guilds are learned from your target, mouseover, nameplates, group members and /who
@@ -133,6 +134,21 @@ local function onInvite(inviter, guid)
     end
 end
 
+-- A guild invite is blocked if the inviter is on your lists, or the guild itself is.
+local function onGuildInvite(inviter, guildName)
+    local why = inviter and ns.PersonReason(inviter)
+    if not why and guildName and ns.IsGuildFiltered(guildName) then why = "guild on your list" end
+    if not why then return end
+    local who = ("%s <%s>"):format(tostring(inviter), tostring(guildName))
+    if ns.db.declineGuild and DeclineGuild then
+        DeclineGuild()
+        if StaticPopup_Hide then StaticPopup_Hide("GUILD_INVITE") end
+        ns.Alert(("Declined a guild invite from %s (%s)."):format(who, why))
+    else
+        ns.Alert(("%s is inviting you to their guild (%s)."):format(who, why))
+    end
+end
+
 ---------------------------------------------------------------------------
 -- Events
 ---------------------------------------------------------------------------
@@ -168,6 +184,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
         announce()
         for _, e in ipairs({
             "GROUP_ROSTER_UPDATE", "PARTY_MEMBERS_CHANGED", "RAID_ROSTER_UPDATE", "PARTY_INVITE_REQUEST",
+            "GUILD_INVITE_REQUEST",
             "PLAYER_TARGET_CHANGED", "UPDATE_MOUSEOVER_UNIT", "NAME_PLATE_UNIT_ADDED",
             "WHO_LIST_UPDATE", "CHAT_MSG_SYSTEM",
         }) do register(e) end
@@ -178,6 +195,8 @@ frame:SetScript("OnEvent", function(self, event, ...)
         -- the inviter's GUID is the 7th value on clients that send it
         local guid = select(7, ...)
         if ns.db.alerts or ns.db.autoDecline then onInvite((...), type(guid) == "string" and guid or nil) end
+    elseif event == "GUILD_INVITE_REQUEST" then
+        if ns.db.alerts or ns.db.declineGuild then onGuildInvite(...) end
     elseif event == "GROUP_ROSTER_UPDATE" or event == "PARTY_MEMBERS_CHANGED" or event == "RAID_ROSTER_UPDATE" then
         if ns.db.alerts then
             ns.CheckGroup(false)

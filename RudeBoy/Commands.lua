@@ -20,7 +20,8 @@
                                  run it again for each next search (big guilds are split up)
     /rb check                    check your current group now
     /rb alerts on | off          group and invite warnings
-    /rb autodecline on | off     decline invites from filtered people
+    /rb decline party on | off   decline party invites from filtered people (also: /rb autodecline)
+    /rb decline guild on | off   decline guild invites from filtered people or filtered guilds
     /rb reminder <minutes>       remind to scan when the last scan is older (30 to 720)
     /rb log [clear]              the last 20 hidden lines, with their text (or clear the list)
     /rb preview on | off         show would-be-hidden lines with a grey tag instead, for testing
@@ -40,7 +41,8 @@ local HELP = {
     "/rb exempt add <name> | remove <name> | list - let someone through despite the lists",
     "/rb scan [guild] - /who your guilds to learn who is in them (run again for each next search)",
     "/rb check - check your group now",
-    "/rb alerts on | off,  /rb autodecline on | off,  /rb reminder <minutes, 30 to 720>",
+    "/rb alerts on | off,  /rb decline party on | off,  /rb decline guild on | off",
+    "/rb reminder <minutes, 30 to 720>",
     "/rb log [clear] - the last hidden lines,  /rb preview on | off - tag lines instead of hiding",
     "/rb test <text> - would it be hidden?,  /rb debug - how the game writes names",
 }
@@ -62,8 +64,8 @@ local function onOff(v) return v and "ON" or "OFF" end
 
 local function printStatus()
     local db = ns.db
-    P(("v%s. Hiding chat: %s. Group alerts: %s. Auto-decline invites: %s."):format(
-        ns.VERSION, onOff(db.enabled), onOff(db.alerts), onOff(db.autoDecline)))
+    P(("v%s. Hiding chat: %s. Warnings: %s. Decline party invites: %s. Decline guild invites: %s."):format(
+        ns.VERSION, onOff(db.enabled), onOff(db.alerts), onOff(db.autoDecline), onOff(db.declineGuild)))
     P(("%d words, %d players, %d guilds filtered. Guilds known for %d players."):format(
         count(db.words), count(db.players), count(db.guilds), count(db.known)))
     P(("hidden %d lines this session, %d lifetime (%d by word, %d player, %d guild) since %s."):format(
@@ -250,8 +252,12 @@ SlashCmdList["RUDEBOY"] = function(input)
         ns.CheckGroup(true)
     elseif cmd == "alerts" then
         toggle("alerts", action, "group alerts")
-    elseif cmd == "autodecline" then
-        toggle("autoDecline", action, "auto-decline invites")
+    elseif cmd == "autodecline" or (cmd == "decline" and action == "party") then
+        toggle("autoDecline", cmd == "decline" and arg or action, "decline party invites from blocked people")
+    elseif cmd == "decline" and action == "guild" then
+        toggle("declineGuild", arg, "decline guild invites from blocked people and guilds")
+    elseif cmd == "decline" then
+        P("usage: /rb decline party on | off,  /rb decline guild on | off")
     elseif cmd == "reminder" then
         if action ~= "" then ns.SetReminder(tonumber(action)) end
         P("scan reminder: every " .. ns.FormatInterval(ns.db.reminderMinutes) .. ".")
