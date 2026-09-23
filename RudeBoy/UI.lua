@@ -486,12 +486,18 @@ local function build()
 
     local checksY = listBottom - 34
     ui.checks = {
+        -- two columns of 190px: labels must stay short
         enabled = checkbox(f, "Hide chat lines", "enabled", 22, checksY),
-        alerts = checkbox(f, "Warn about blocked people in groups and invites", "alerts", 152, checksY),
-        autoDecline = checkbox(f, "Decline party invites from blocked people", "autoDecline", 22, checksY - 26),
-        declineGuild = checkbox(f, "Decline guild invites from blocked people and guilds", "declineGuild", 22, checksY - 52),
+        alerts = checkbox(f, "Warn about blocked people", "alerts", 212, checksY),
+        autoDecline = checkbox(f, "Decline party invites", "autoDecline", 22, checksY - 26),
+        declineGuild = checkbox(f, "Decline guild invites", "declineGuild", 212, checksY - 26),
     }
-    local reminderY = checksY - 84
+    local note = fontString(f, "GameFontDisableSmall")
+    note:SetPoint("TOPLEFT", 26, checksY - 54)
+    note:SetWidth(380)
+    note:SetJustifyH("LEFT")
+    note:SetText("Warnings cover groups and invites. Invites are only declined when they come from blocked people or guilds.")
+    local reminderY = checksY - 80
     ui.less = button(f, "-", 24, function() ns.SetReminder(ns.db.reminderMinutes - ns.REMINDER_STEP) end)
     ui.less:SetPoint("TOPLEFT", 24, reminderY)
     ui.more = button(f, "+", 24, function() ns.SetReminder(ns.db.reminderMinutes + ns.REMINDER_STEP) end)
