@@ -61,7 +61,8 @@ local function boot(opts)
     function methods:Click() if self.enabled and self.scripts.OnClick then self.scripts.OnClick(self) end end
     local function mockFrame(name)
         local f = setmetatable({ scripts = {}, events = {}, shown = true, enabled = true, checked = false, text = "" },
-            { __index = function(_, k) return methods[k] or function() end end })
+            -- WoW methods are CapitalCase; other fields (entry, label...) stay nil until set
+            { __index = function(_, k) return methods[k] or (type(k) == "string" and k:find("^%u") and function() end) or nil end })
         if name then _G[name] = f end
         return f
     end
@@ -82,7 +83,10 @@ local function boot(opts)
     _G.UnitGUID = function(unit) return unit == "player" and "Player-1-SELF" or nil end
     _G.UnitExists = function(unit) return env.units[unit] ~= nil end
     _G.UnitIsPlayer = function(unit) return env.units[unit] ~= nil end
-    _G.UnitName = function(unit) return env.units[unit] and env.units[unit].name end
+    _G.UnitName = function(unit)
+        local u = env.units[unit]
+        if u then return u.name, u.second end
+    end
     _G.GetGuildInfo = function(unit) return env.units[unit] and env.units[unit].guild end
     _G.RaidWarningFrame, _G.ChatTypeInfo = {}, { RAID_WARNING = {} }
     _G.RaidNotice_AddMessage = function(_, text) env.alerts[#env.alerts + 1] = text end
@@ -615,7 +619,7 @@ do
     check(#env.ns.db.log == 0, "/rb log clear empties the list")
     env.slash("")
     local ui = env.ns.ui
-    ui.tabs[4]:Click()
+    ui.tabs[5]:Click()
     check(ui.empty:IsShown() and ui.empty:GetText() == "Nothing hidden yet." and not ui.clear.enabled, "Hidden tab starts empty")
     check(not ui.input:IsShown() and not ui.add:IsShown() and ui.preview:IsShown(), "no input box on the Hidden tab")
     env.filterRaw("CHAT_MSG_CHANNEL", "you badword", "Spam Mer", 3000, "Trade")
@@ -670,6 +674,71 @@ do
     check(tocVersion == boot().ns.VERSION, ("the .toc version (%s) matches ns.VERSION in Core.lua"):format(tostring(tocVersion)))
     local changelog = io.open("CHANGELOG.md") and io.open("CHANGELOG.md"):read("*a") or ""
     check(changelog:find("## " .. tostring(tocVersion):gsub("%.", "%%."), 1) ~= nil, "CHANGELOG.md has a section for this version")
+end
+
+---------------------------------------------------------------------------
+-- Full unit names, the Blocked tab and exemptions
+---------------------------------------------------------------------------
+do
+    local env = boot()
+    env.units.target = { name = "Little", second = "Under", guild = "Streamer Army" }
+    env.fire("PLAYER_TARGET_CHANGED")
+    check(env.ns.GuildOf("Little Under") == "Streamer Army", "first and last name from UnitName are joined")
+    check(env.ns.db.known["littleunder"].n == "Little Under", "the shown name is kept with the guild")
+    env.units.target = { name = "Bob Builder", second = "Classic Beta PvP", guild = "Other Guild" }
+    env.fire("PLAYER_TARGET_CHANGED")
+    check(env.ns.GuildOf("Bob Builder") == "Other Guild" and env.ns.db.known["bobbuilder"], "this server's name as the second value is not a last name")
+    env.units.mouseover = { name = "Cat", guild = "Third Guild" }
+    _G.UnitGUID = function(unit) return unit == "player" and "Player-1-SELF" or unit == "mouseover" and "Player-1-CAT" or nil end
+    env.guidNames["Player-1-CAT"] = "Cat Facts"
+    env.fire("UPDATE_MOUSEOVER_UNIT")
+    check(env.ns.GuildOf("Cat Facts") == "Third Guild", "a fuller name from the GUID is preferred")
+
+    env.slash("guild add Streamer Army")
+    env.slash("player add Bad Actor")
+    check(env.chat("CHAT_MSG_SAY", "hi", "Little Under") == true, "guild member hidden")
+    env.slash("exempt add Little Under")
+    check(env.chat("CHAT_MSG_SAY", "hi", "Little Under") == false, "exempt guild member is let through")
+    env.slash("word add badword")
+    check(env.chat("CHAT_MSG_SAY", "badword", "Little Under") == true, "words still apply to exempt people")
+    env.slash("exempt add Bad Actor")
+    check(env.chat("CHAT_MSG_SAY", "hi", "Bad Actor") == false, "exempt beats the player list")
+    env.units.party1 = { name = "Little", second = "Under", guild = "Streamer Army" }
+    env.fire("GROUP_ROSTER_UPDATE")
+    check(#env.alerts == 0, "no group warning about an exempt person")
+    env.slash("exempt remove Bad Actor")
+    check(env.chat("CHAT_MSG_SAY", "hi", "Bad Actor") == true, "unexempt blocks again")
+    env.slash("exempt list")
+    check(env.lastPrint():find("Little Under"), "/rb exempt list")
+
+    -- the Blocked tab
+    env.slash("")
+    local ui = env.ns.ui
+    ui.tabs[4]:Click()
+    check(not ui.input:IsShown() and not ui.target:IsShown() and not ui.reveal:IsShown(), "Blocked tab has no input or target button")
+    local function rows()
+        local out = {}
+        for _, row in ipairs(ui.rows) do if row:IsShown() then out[#out + 1] = row.label:GetText() .. " [" .. row.remove:GetText() .. "]" end end
+        return table.concat(out, "\n")
+    end
+    check(rows() == "Little Under  -  exempt, guild <Streamer Army> [Unexempt]\nBad Actor  -  on your player list [Remove]",
+        "exempt first, then player list; guild members of unlisted guilds are not shown")
+    env.ns.RememberGuild("Loud Fan", "Streamer Army")
+    check(rows():find("Loud Fan  -  guild <Streamer Army> [Exempt]", 1, true), "guild members of listed guilds are shown with why")
+    ui.rows[3].remove:Click()
+    check(env.ns.IsExempt("Loud Fan") and rows():find("Loud Fan  -  exempt, guild <Streamer Army> [Unexempt]", 1, true), "Exempt on a row")
+    ui.rows[1].remove:Click()
+    check(not env.ns.IsExempt("Little Under") and rows():find("Little Under  -  guild <Streamer Army> [Exempt]", 1, true), "Unexempt on a row")
+    ui.rows[2].remove:Click()   -- Loud Fan (exempt) is first, Bad Actor second
+    check(not env.ns.IsPlayerFiltered("Bad Actor") and not rows():find("Bad Actor", 1, true), "Remove on a player-list row")
+
+    -- login line about saved settings
+    local fresh = boot()
+    check(fresh.prints[1]:find("no saved settings found"), "login says when nothing was on disk")
+    fresh.fire("PLAYER_LOGOUT")
+    check(fresh.ns.db.savedAt == "12:00", "logout stamps the save time")
+    local again = boot({ db = fresh.ns.db })
+    check(again.prints[1]:find("settings loaded") and again.prints[1]:find("last saved 12:00"), "login says settings loaded and when saved")
 end
 
 realPrint(("%d passed, %d failed"):format(passed, failed))

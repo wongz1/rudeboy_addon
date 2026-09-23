@@ -13,6 +13,9 @@
     /rb guild add [guild]        no guild = your target's guild
     /rb guild remove <guild>
     /rb guild list
+    /rb exempt add <name>        let a player through despite your player and guild lists
+    /rb exempt remove <name>
+    /rb exempt list
     /rb scan [guild]             /who your filtered guilds so their online members are learned;
                                  run it again for each next search (big guilds are split up)
     /rb check                    check your current group now
@@ -34,6 +37,7 @@ local HELP = {
     "/rb word add <w1, w2, ...> | remove <word> | list",
     "/rb player add [name] | remove <name> | list   (no name = your target)",
     "/rb guild add [guild] | remove <guild> | list   (no guild = your target's guild)",
+    "/rb exempt add <name> | remove <name> | list - let someone through despite the lists",
     "/rb scan [guild] - /who your guilds to learn who is in them (run again for each next search)",
     "/rb check - check your group now",
     "/rb alerts on | off,  /rb autodecline on | off,  /rb reminder <minutes, 30 to 720>",
@@ -144,6 +148,25 @@ local function guildCmd(action, arg)
     end
 end
 
+local function exemptCmd(action, arg)
+    if action == "add" then
+        local name, err = arg, nil
+        if name == "" then
+            local _
+            name, _, err = ns.TargetInfo()
+            if not name then P("usage: /rb exempt add <name>, or " .. err) return end
+        end
+        local added
+        added, err = ns.Exempt(name)
+        P(added and ("%s is exempt: let through even if they or their guild are on your lists."):format(added) or err)
+    elseif action == "remove" then
+        local removed, err = ns.Unexempt(arg)
+        P(removed and ("%s is no longer exempt."):format(removed) or err)
+    else
+        printList("exempt", ns.db.exempt)
+    end
+end
+
 local function toggle(key, value, label)
     if value == "on" or value == "off" then ns.db[key] = (value == "on") ns.Changed() end
     P(("%s: %s."):format(label, onOff(ns.db[key])))
@@ -158,13 +181,15 @@ end
 
 local function printDebug()
     local _, _, _, toc = GetBuildInfo()
+    P(("saved settings %s at login; last saved %s"):format(ns.loadedFromDisk and "were found" or "were NOT found",
+        tostring(ns.db.savedAt or "never")))
     P(("interface %s, realm %s / %s"):format(tostring(toc), quoted(GetRealmName and GetRealmName()),
         quoted(GetNormalizedRealmName and GetNormalizedRealmName())))
     for _, unit in ipairs({ "player", "target" }) do
         if UnitExists(unit) then
             P(("%s: UnitName %s | GetUnitName %s | UnitFullName %s | matches as \"%s\""):format(unit,
                 quoted(UnitName(unit)), quoted(GetUnitName and GetUnitName(unit, true)),
-                quoted(UnitFullName and UnitFullName(unit)), ns.NormalizeName(UnitName(unit))))
+                quoted(UnitFullName and UnitFullName(unit)), ns.NormalizeName(ns.UnitFullName(unit))))
         end
     end
     if #ns.recentAuthors == 0 then P("no chat senders seen yet.") end
@@ -217,6 +242,8 @@ SlashCmdList["RUDEBOY"] = function(input)
         playerCmd(action, arg)
     elseif cmd == "guild" or cmd == "guilds" then
         guildCmd(action, arg)
+    elseif cmd == "exempt" or cmd == "exempts" then
+        exemptCmd(action, arg)
     elseif cmd == "scan" then
         ns.Scan(rest)
     elseif cmd == "check" then

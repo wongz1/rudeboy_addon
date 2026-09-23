@@ -19,4 +19,6 @@ First release, for WoW Forever.
   hiding them.
 - Lifetime count of filtered lines.
 - Scan reminder, from every 30 minutes to every 12 hours.
+- Blocked tab listing everyone being blocked and why, with Exempt to let a person through
+  despite their guild being on your list.
 - Two-part WoW Forever names ("Cat Facts", "Cat-Facts") are matched however the game writes them.

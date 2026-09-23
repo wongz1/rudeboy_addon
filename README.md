@@ -26,7 +26,13 @@ From a copy of this repo, copy (or symlink) the `RudeBoy` folder instead.
 
 Type `/rb` to open it (again, or Escape, to close). It has a tab each for **Words**, **Players**
 and **Guilds**: type into the box and press Add (or Enter), and each entry has a Remove button.
-Players and Guilds also have **Add target**, and Guilds has **Scan** (see below). Checkboxes at
+Players and Guilds also have **Add target**, and Guilds has **Scan** (see below).
+
+The **Blocked** tab lists every person being blocked and why: on your player list, or a member
+of a guild on your guild list (otherwise you can't see who the guild filter is catching). Press
+**Exempt** on a row to let that person through anyway, for someone you get on with in a guild you
+block. Exempt people stay at the top of the tab with an **Unexempt** button. Words still apply to
+what they say. Checkboxes at
 the bottom turn chat hiding, group warnings and invite declining on and off, and `-` / `+` set
 the scan reminder. **About** explains what the addon does and why guild lists need regular scans.
 
@@ -63,6 +69,9 @@ words from the window reports how many, not which.
 /rb guild add [guild]        no guild = your target's guild
 /rb guild remove <guild>
 /rb guild list
+/rb exempt add [name]        let a player through despite your player and guild lists
+/rb exempt remove <name>
+/rb exempt list
 /rb scan [guild]             /who your filtered guilds so their online members are learned
 /rb check                    check your current group now
 /rb alerts on | off          group and invite warnings (on by default)
@@ -74,7 +83,8 @@ words from the window reports how many, not which.
 /rb debug                    how the game writes names: yours, your target's, recent senders
 ```
 
-All lists are shared by every character on the account.
+All lists are shared by every character on the account. At login the addon prints one line saying
+whether saved settings were found on disk and when they were last saved.
 
 ## How words match
 

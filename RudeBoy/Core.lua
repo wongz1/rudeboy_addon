@@ -8,7 +8,8 @@
         words        { [entry] = true }                 words and phrases, see ns.CompileWord
         players      { [normalized name] = "Shown Name" }
         guilds       { [normalized guild] = "Shown Guild" }
-        known        { [normalized name] = { g = "Guild", t = time seen } }
+        known        { [normalized name] = { g = "Guild", t = time seen, n = "Shown Name" } }
+        exempt       { [normalized name] = "Shown Name" }   let through despite player/guild lists
         hiddenTotal  lifetime count of hidden lines; hiddenByKind splits it by word/player/guild
         countingSince  the date the lifetime count started
         lastScan     time() the last /rb scan finished
@@ -75,6 +76,23 @@ function ns.NamesFor(author, guid)
         end
     end
     return names
+end
+
+-- The full name of a unit. WoW Forever's UnitName gives the first name, with the last name
+-- as a second value where standard clients put the server; a second value that isn't this
+-- server is taken as the last name. The name the game gives for the unit's GUID is used
+-- when it is the more complete one.
+function ns.UnitFullName(unit)
+    local name, second = UnitName(unit)
+    if type(name) ~= "string" or name == "" then return nil end
+    if type(second) == "string" and second ~= "" and not name:find("%s") and squash(second) ~= realmKey() then
+        name = name .. " " .. second
+    end
+    if UnitGUID and GetPlayerInfoByGUID then
+        local ok, _, _, _, _, _, byGuid = pcall(GetPlayerInfoByGUID, UnitGUID(unit) or "")
+        if ok and type(byGuid) == "string" and byGuid:find("%s") and not name:find("%s") then name = byGuid end
+    end
+    return name
 end
 
 function ns.NormalizeGuild(guild)
@@ -178,7 +196,32 @@ end
 function ns.RememberGuild(name, guild)
     local key = ns.NormalizeName(name)
     if key == "" or guild == nil or not ns.db then return end
-    ns.db.known[key] = { g = guild, t = time() }
+    ns.db.known[key] = { g = guild, t = time(), n = trim(name) }
+    ns.Changed()   -- the Blocked tab lists members of listed guilds
+end
+
+-- Exemptions: people let through even though they, or their guild, are on your lists.
+-- Words still apply to what they say.
+function ns.IsExempt(name)
+    return ns.db.exempt[ns.NormalizeName(name)]
+end
+
+function ns.Exempt(name)
+    name = trim(name)
+    local key = ns.NormalizeName(name)
+    if key == "" then return nil, "type a player name first." end
+    ns.db.exempt[key] = name
+    ns.Changed()
+    return name
+end
+
+function ns.Unexempt(name)
+    local key = ns.NormalizeName(name)
+    local shown = ns.db.exempt[key]
+    if not shown then return nil, "not exempt: " .. trim(name) end
+    ns.db.exempt[key] = nil
+    ns.Changed()
+    return shown
 end
 
 function ns.GuildOf(name)
@@ -191,6 +234,9 @@ end
 -- `guid` lets the name the game gives for it be checked too.
 function ns.PersonReason(name, guild, guid)
     local names = ns.NamesFor(name, guid)
+    for _, n in ipairs(names) do
+        if ns.IsExempt(n) then return nil end
+    end
     for _, n in ipairs(names) do
         if ns.IsPlayerFiltered(n) then return "player on your list" end
     end
@@ -299,6 +345,7 @@ function ns.LoadDB()
     db.countingSince = db.countingSince or (date and date("%Y-%m-%d")) or ""
     db.reminderMinutes = db.reminderMinutes or 720
     db.log = db.log or {}
+    db.exempt = db.exempt or {}
     if db.preview == nil then db.preview = false end
 
     local cutoff = time() - KNOWN_DAYS * 86400

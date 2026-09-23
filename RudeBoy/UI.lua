@@ -9,6 +9,10 @@
     why. Their text is masked the same way until Show is pressed; hover a shown line for all
     of it. Preview there leaves would-be-hidden lines in chat with a tag instead, for testing.
 
+    The Blocked tab lists every person being blocked and the reason: on your player list, or
+    a member of a listed guild (the part that is otherwise invisible). Exempt on a row lets that
+    person through anyway; their exemption shows at the top of the tab with Unexempt.
+
     The bottom of the window sets how often to be reminded to scan, and About explains
     why guild lists need regular scans.
 
@@ -28,6 +32,8 @@ local TABS = {
       hint = "Add a player by name, or target them and press Add target:" },
     { key = "guilds", label = "Guilds", noun = "guild", add = "AddGuild", remove = "RemoveGuild",
       hint = "Add a guild by name, or target a member and press Add target:" },
+    { key = "blocked", label = "Blocked", noun = "blocked player",
+      hint = "Everyone Rude Boy blocks, and why. Exempt lets a person through even though their guild is on your list." },
     { key = "log", label = "Hidden", noun = "line", masked = true,
       hint = "The last lines Rude Boy hid, newest first. Messages stay masked until you press Show." },
 }
@@ -68,8 +74,38 @@ ns.Commas = commas
 
 local function plural(n, noun) return ("%d %s%s"):format(n, noun, n == 1 and "" or "s") end
 
+-- Everyone blocked and why. Exempt people first, then the rest alphabetically.
+local function blockedEntries()
+    local list, seen = {}, {}
+    local function add(key, text, source, action, order)
+        seen[key] = true
+        list[#list + 1] = { key = key, text = text, source = source, action = action, order = order }
+    end
+    for key, shown in pairs(ns.db.exempt) do
+        local guild = ns.GuildOf(shown)
+        local why = ns.db.players[key] and "on your player list"
+            or (guild and ns.IsGuildFiltered(guild) and ("guild <%s>"):format(guild))
+            or "not on any list"
+        add(key, shown, "exempt, " .. why, "Unexempt", 0)
+    end
+    for key, shown in pairs(ns.db.players) do
+        if not seen[key] then add(key, shown, "on your player list", "Remove", 1) end
+    end
+    for key, info in pairs(ns.db.known) do
+        if not seen[key] and type(info) == "table" and info.g ~= "" and ns.IsGuildFiltered(info.g) then
+            add(key, info.n or key, ("guild <%s>"):format(info.g), "Exempt", 1)
+        end
+    end
+    table.sort(list, function(a, b)
+        if a.order ~= b.order then return a.order < b.order end
+        return a.text:lower() < b.text:lower()
+    end)
+    return list
+end
+
 local function entries()
     local list = {}
+    if current.key == "blocked" then return blockedEntries() end
     if current.key == "log" then
         local log = ns.db.log
         for i = #log, 1, -1 do list[#list + 1] = { log = log[i] } end
@@ -115,9 +151,15 @@ function ns.RefreshUI()
                 row.label:SetText(logLabel(e.log, masked))
                 row.label:SetWidth(370)
                 row.remove:Hide()
+            elseif e.action then
+                row.label:SetText(("%s  -  %s"):format(e.text, e.source))
+                row.label:SetWidth(290)
+                row.remove:SetText(e.action)
+                row.remove:Show()
             else
                 row.label:SetText(masked and MASK or e.text)
                 row.label:SetWidth(290)
+                row.remove:SetText("Remove")
                 row.remove:Show()
             end
             row:Show()
@@ -134,7 +176,7 @@ function ns.RefreshUI()
     end
     if offset > 0 then ui.prev:Enable() else ui.prev:Disable() end
     if offset + ROWS < #list then ui.next:Enable() else ui.next:Disable() end
-    ui.empty:SetText(isLog and "Nothing hidden yet." or "Nothing here yet.")
+    ui.empty:SetText(isLog and "Nothing hidden yet." or current.key == "blocked" and "Nobody is blocked yet." or "Nothing here yet.")
     if #list == 0 then ui.empty:Show() else ui.empty:Hide() end
     if isLog then
         ui.input:Hide()
@@ -143,6 +185,12 @@ function ns.RefreshUI()
         ui.preview:Show()
         ui.preview:SetText(ns.db.preview and "Preview: ON" or "Preview: OFF")
         if #list > 0 then ui.clear:Enable() else ui.clear:Disable() end
+    elseif current.key == "blocked" then
+        ui.input:Hide()
+        ui.add:Hide()
+        ui.clear:Hide()
+        ui.preview:Hide()
+        ui.target:Hide()
     else
         ui.input:Show()
         ui.add:Show()
@@ -156,7 +204,7 @@ function ns.RefreshUI()
     else
         ui.reveal:Hide()
     end
-    if current.masked then ui.target:Hide() else ui.target:Show() end
+    if current.masked or current.key == "blocked" then ui.target:Hide() else ui.target:Show() end
     if current.key == "guilds" then ui.scan:Show() else ui.scan:Hide() end
 
     ui.checks.enabled:SetChecked(ns.db.enabled)
@@ -234,6 +282,19 @@ end
 local function removeRow(row)
     local e = row.entry
     if not e then return end
+    if e.action == "Exempt" then
+        ns.Exempt(e.text)
+        setStatus(("%s is exempt: let through even though their guild is on your list."):format(e.text))
+        return
+    elseif e.action == "Unexempt" then
+        ns.Unexempt(e.key)
+        setStatus(("%s is no longer exempt."):format(e.text))
+        return
+    elseif e.action == "Remove" then
+        ns.RemovePlayer(e.key)
+        setStatus(("Removed %s from your player list."):format(e.text))
+        return
+    end
     local removed = ns[current.remove](e.key)
     if removed then
         setStatus(current.masked and not revealed and ("Removed 1 %s."):format(current.noun) or ("Removed %s."):format(removed))
@@ -329,8 +390,8 @@ local function build()
 
     ui.tabs = {}
     for i, tab in ipairs(TABS) do
-        local b = button(f, tab.label, 90, function() selectTab(tab) end)
-        b:SetPoint("TOPLEFT", 22 + (i - 1) * 96, -50)
+        local b = button(f, tab.label, 74, function() selectTab(tab) end)
+        b:SetPoint("TOPLEFT", 22 + (i - 1) * 78, -50)
         ui.tabs[i] = b
     end
 

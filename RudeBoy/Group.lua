@@ -38,7 +38,7 @@ end
 local function learnUnit(unit)
     if not (UnitExists and UnitExists(unit)) then return end
     if UnitIsPlayer and not UnitIsPlayer(unit) then return end
-    local name = UnitName(unit)
+    local name = ns.UnitFullName(unit)
     local guild = GetGuildInfo and GetGuildInfo(unit)
     if name and guild then ns.RememberGuild(name, guild) end
     return name, guild
@@ -90,7 +90,7 @@ end
 
 -- Checks everyone in your group. `verbose` also reports when nobody matched.
 function ns.CheckGroup(verbose)
-    local me = ns.NormalizeName(UnitName("player"))
+    local me = ns.NormalizeName(ns.UnitFullName("player"))
     local seen, found, members = {}, 0, 0
     for _, unit in ipairs(groupUnits()) do
         local name, guild = learnUnit(unit)
@@ -146,16 +146,34 @@ local function register(event)
 end
 
 register("PLAYER_LOGIN")
+register("PLAYER_LOGOUT")
+
+-- One line at login saying whether saved settings came back from disk, to tell a saving
+-- problem from a loading one.
+local function announce()
+    local db = ns.db
+    local function count(t) local n = 0 for _ in pairs(t) do n = n + 1 end return n end
+    if ns.loadedFromDisk then
+        ns.Print(("v%s: settings loaded (%d words, %d players, %d guilds, %d guild members known; last saved %s). /rb opens the window."):format(
+            ns.VERSION, count(db.words), count(db.players), count(db.guilds), count(db.known), db.savedAt or "unknown"))
+    else
+        ns.Print(("v%s: no saved settings found on disk, starting fresh. /rb opens the window."):format(ns.VERSION))
+    end
+end
 
 frame:SetScript("OnEvent", function(self, event, ...)
     if event == "PLAYER_LOGIN" then
+        ns.loadedFromDisk = RudeBoyDB ~= nil
         ns.LoadDB()
+        announce()
         for _, e in ipairs({
             "GROUP_ROSTER_UPDATE", "PARTY_MEMBERS_CHANGED", "RAID_ROSTER_UPDATE", "PARTY_INVITE_REQUEST",
             "PLAYER_TARGET_CHANGED", "UPDATE_MOUSEOVER_UNIT", "NAME_PLATE_UNIT_ADDED",
             "WHO_LIST_UPDATE", "CHAT_MSG_SYSTEM",
         }) do register(e) end
         ns.CheckGroup(false)
+    elseif event == "PLAYER_LOGOUT" then
+        if ns.db then ns.db.savedAt = date and date("%Y-%m-%d %H:%M") or "" end
     elseif event == "PARTY_INVITE_REQUEST" then
         -- the inviter's GUID is the 7th value on clients that send it
         local guid = select(7, ...)

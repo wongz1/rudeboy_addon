@@ -47,7 +47,7 @@ end
 
 local function isSelf(author, guid)
     if guid and UnitGUID and guid == UnitGUID("player") then return true end
-    return ns.NormalizeName(author) == ns.NormalizeName(UnitName("player"))
+    return ns.NormalizeName(author) == ns.NormalizeName(ns.UnitFullName("player"))
 end
 
 local function judge(event, msg, author, guid, where)
