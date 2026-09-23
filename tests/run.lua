@@ -597,6 +597,9 @@ do
     check(env.chat("CHAT_MSG_SAY", "hi", "Cat") == false, "first name alone does not match")
     env.guidNames["Player-1-ABC"] = "Cat Facts"
     check(env.chat("CHAT_MSG_SAY", "hi", "Cat", "Player-1-ABC") == true, "the GUID's name catches a sender shown by first name")
+    env.slash("player add Deew")
+    env.guidNames["Player-1-DEEW"] = "Deew"
+    check(env.chat("CHAT_MSG_SAY", "hi", "Deew Acidni", "Player-1-DEEW") == false, "a first-name-only GUID name is not matched against a fuller sender name")
 
     env.slash("guild add Streamer Army")
     env.ns.RememberGuild("Game Enjoyer", "Streamer Army")

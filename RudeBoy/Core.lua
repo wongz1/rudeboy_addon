@@ -71,7 +71,9 @@ function ns.NamesFor(author, guid)
     local names = { author }
     if type(guid) == "string" and guid ~= "" and GetPlayerInfoByGUID then
         local ok, _, _, _, _, _, name, realm = pcall(GetPlayerInfoByGUID, guid)
-        if ok and type(name) == "string" and name ~= "" then
+        -- On WoW Forever this gives the first name only ("Deew" for "Deew Acidni"), which is
+        -- less complete than the line's own name and must not be matched on its own.
+        if ok and type(name) == "string" and name ~= "" and (name:find("%s") or not tostring(author):find("%s")) then
             names[#names + 1] = name
             if type(realm) == "string" and realm ~= "" then names[#names + 1] = name .. "-" .. realm end
         end
