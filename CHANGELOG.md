@@ -22,4 +22,8 @@ First release, for WoW Forever.
 - Scan reminder, from every 30 minutes to every 12 hours.
 - Blocked tab listing everyone being blocked and why, with Exempt to let a person through
   despite their guild being on your list.
+- Adding a guild looks its online members up with `/who` straight away.
+- Workaround for the WoW Forever beta not loading addon settings: `LinkSavedSettings.cmd`
+  (Windows) and `link-saved-settings.sh` (macOS/Linux) in the addon folder link your save file
+  into the addon so it is restored at startup.
 - Two-part WoW Forever names ("Cat Facts", "Cat-Facts") are matched however the game writes them.

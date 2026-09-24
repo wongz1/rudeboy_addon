@@ -21,6 +21,24 @@ The Release workflow then runs the tests, checks the tag matches the `.toc` vers
 `RudeBoy-v0.2.0.zip` (only the `RudeBoy` folder, see `.pkgmeta`) and publishes it to GitHub
 Releases, plus every site set up below. Watch it under the repo's Actions tab.
 
+## First upload by hand (no automation needed)
+
+1. Build the zip: `git tag v0.1.0 && git push origin v0.1.0` builds and attaches it to a GitHub
+   Release, or zip the `RudeBoy` folder yourself (only the addon files and LICENSE, no
+   `Saved.lua`, `tests` or docs), with `RudeBoy/` as the zip's top-level folder.
+2. Sign in at https://authors.curseforge.com with a CurseForge (Overwolf) account.
+3. **Start a project** > World of Warcraft > Addon. Fill in: name "Rude Boy", summary and
+   description from "Project page text" below, category **Chat & Communication**, license **MIT**,
+   and a screenshot or two of the window and a hidden line in chat.
+4. Submit the project for approval. New projects are reviewed by CurseForge staff, usually within
+   a day or two.
+5. **Upload file**: choose the zip, set the release type (Beta is honest for a first version on a
+   beta client), pick the game version (see "Game version" below), and paste the version's
+   changelog section. Uploaded files are scanned and usually appear within a few hours.
+6. Once the project page exists, copy its **Project ID** (shown on the project's overview page)
+   into `RudeBoy/RudeBoy.toc` as `## X-Curse-Project-ID: <id>` so later releases can upload
+   automatically.
+
 ## One-time setup
 
 ### Allow workflow files to be pushed
