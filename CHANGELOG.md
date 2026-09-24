@@ -4,6 +4,8 @@
 
 - "Block Olympus guilds" toggle (Guilds tab, or `/rb olympus on`): blocks every guild with
   "Olympus" in its name, and looks their members up with one `/who`.
+- A "Blocked by Rude Boy (reason)" line in the tooltip of blocked players, and an "exempt" line
+  for exempt ones. Hovering also records the player's guild.
 
 ## 0.1.3
 

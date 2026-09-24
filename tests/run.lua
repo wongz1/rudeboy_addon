@@ -74,6 +74,13 @@ local function boot(opts)
     function methods:CreateFontString() return mockFrame() end
     function methods:CreateTexture() return mockFrame() end
     _G.UISpecialFrames = {}
+    -- the tooltip: a frame whose GetUnit reports env.tooltipUnit, collecting added lines
+    _G.TooltipDataProcessor, _G.Enum = nil, nil
+    _G.GameTooltip = mockFrame()
+    _G.GameTooltip.lines = {}
+    _G.GameTooltip.GetUnit = function() return env.tooltipUnit and env.units[env.tooltipUnit].name, env.tooltipUnit end
+    _G.GameTooltip.AddLine = function(self, text, r, g, b) self.lines[#self.lines + 1] = { text = text, r = r, g = g, b = b } end
+    _G.GameTooltip.HasScript = function() return true end
     _G.UIParent = mockFrame()
     _G.CreateFrame = function(_, name)
         local f = mockFrame(name)
@@ -861,6 +868,36 @@ do
     env.whoAnswer(1, "Olympus Rising")
     env.slash("scan")
     check(env.whoQuery == 'g-"Other Guild"', "then the listed guilds")
+end
+
+---------------------------------------------------------------------------
+-- Tooltips
+---------------------------------------------------------------------------
+do
+    local env = boot()
+    local tt = _G.GameTooltip
+    local function hover(unit)
+        tt.lines = {}
+        env.tooltipUnit = unit
+        tt.scripts.OnTooltipSetUnit(tt)
+        return tt.lines[1]
+    end
+    env.slash("guild add Streamer Army")
+    env.slash("player add Bad Actor")
+    env.units.mouseover = { name = "Nice", second = "Person" }
+    check(hover("mouseover") == nil, "no line for an ordinary player")
+    env.units.mouseover = { name = "Bad", second = "Actor" }
+    local line = hover("mouseover")
+    check(line and line.text == "Blocked by Rude Boy (player on your list)" and line.r == 1, "blocked player gets a red line")
+    env.units.mouseover = { name = "Guild", second = "Minion", guild = "Streamer Army" }
+    line = hover("mouseover")
+    check(line and line.text == "Blocked by Rude Boy (guild <Streamer Army>)", "guild member gets the guild as the reason")
+    check(env.ns.GuildOf("Guild Minion") == "Streamer Army", "hovering learns the guild")
+    env.slash("exempt add Guild Minion")
+    line = hover("mouseover")
+    check(line and line.text:find("exempt") and line.g == 1, "exempt player gets a green line")
+    env.units.mouseover = nil
+    check(hover("mouseover") == nil and hover(nil) == nil, "nothing without a unit")
 end
 
 realPrint(("%d passed, %d failed"):format(passed, failed))

@@ -7,6 +7,8 @@ It never sends anything to chat, and nobody else can tell you are using it.
 - **Players.** Every line from a player on your list is hidden. This list has no size limit, unlike /ignore.
 - **Guilds.** Every line from a member of a guild on your list is hidden. Add each guild you want gone,
   or tick **Block Olympus guilds** to cover every guild with "Olympus" in its name at once.
+- **Tooltips.** Hovering a blocked player shows "Blocked by Rude Boy" and why; an exempt player
+  shows that too.
 - **Group warnings.** You get a private warning (raid-warning text, a sound and a red chat line)
   when someone on your player or guild list:
   - invites you to a group. You can have those invites declined for you automatically.

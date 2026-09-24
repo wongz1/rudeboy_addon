@@ -24,5 +24,6 @@ Core.lua
 Chat.lua
 Group.lua
 Scan.lua
+Tooltip.lua
 UI.lua
 Commands.lua
