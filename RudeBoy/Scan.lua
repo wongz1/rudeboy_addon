@@ -101,15 +101,18 @@ function ns.ScanResults(num, total)
     end
 end
 
--- Guild names to look up. /who g-"Olympus" matches every guild containing the word, so the
--- Olympus toggle adds one search that covers all of them.
+-- Guild names to look up. /who g-"Crank" matches every guild containing the word, so each
+-- keyword is one search that covers all of its guilds.
 local function sortedGuilds()
     local list = {}
     for _, g in pairs(ns.db.guilds) do
         if not g:find("*", 1, true) then list[#list + 1] = g end
     end
     table.sort(list, function(a, b) return a:lower() < b:lower() end)
-    if ns.db.olympus then table.insert(list, 1, "Olympus") end
+    local words = {}
+    for _, w in pairs(ns.db.keywords) do words[#words + 1] = w end
+    table.sort(words, function(a, b) return a:lower() < b:lower() end)
+    for i = #words, 1, -1 do table.insert(list, 1, words[i]) end   -- keywords first
     return list
 end
 

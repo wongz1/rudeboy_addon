@@ -845,13 +845,13 @@ do
 end
 
 ---------------------------------------------------------------------------
--- The Olympus toggle
+-- Guild keywords and the Olympus shortcut
 ---------------------------------------------------------------------------
 do
     local env = boot()
-    check(env.ns.IsGuildFiltered("Mount Olympus Raiders") == nil, "off by default")
+    check(env.ns.IsGuildFiltered("Mount Olympus Raiders") == nil, "nothing blocked by default")
     env.slash("olympus on")
-    check(env.ns.db.olympus == true and env.whoQuery == 'g-"Olympus"', "/rb olympus on blocks and looks the guilds up at once")
+    check(env.ns.db.keywords.olympus == "Olympus" and env.whoQuery == 'g-"Olympus"', "/rb olympus on adds the keyword and looks the guilds up at once")
     env.whoAnswer(4, "Olympus Rising")
     check(env.ns.IsGuildFiltered("Mount Olympus Raiders") and env.ns.IsGuildFiltered("OLYMPUS") and env.ns.IsGuildFiltered("olympus ii"),
         "any guild with the word is blocked, any case")
@@ -863,25 +863,68 @@ do
     env.slash("olympus off")
     check(env.ns.IsGuildFiltered("Mount Olympus Raiders") == nil, "/rb olympus off")
 
+    env.slash("keyword add Crank")
+    check(env.ns.db.keywords.crank == "Crank" and env.whoQuery == 'g-"Crank"', "/rb keyword add blocks and looks up")
+    env.whoAnswer(2, "Crank Squad")
+    check(env.ns.IsGuildFiltered("The Crank Squad") == 'guilds containing "Crank"', "keyword match names the keyword")
+    env.slash("keyword list")
+    check(env.lastPrint():find("Crank"), "/rb keyword list")
+    env.slash("keyword remove crank")
+    check(env.ns.IsGuildFiltered("The Crank Squad") == nil, "/rb keyword remove, any case")
+
+    -- an older save with the olympus flag becomes a keyword
+    local old = boot({ db = { olympus = true } })
+    check(old.ns.db.keywords.olympus == "Olympus" and old.ns.db.olympus == nil, "old olympus setting migrated")
+
+    env = boot()
     env.slash("guild add Other Guild")
     env.whoAnswer(1, "Other Guild")
     env.slash("")
     local ui = env.ns.ui
     ui.tabs[3]:Click()
-    check(ui.olympus:IsShown() and not ui.olympus:GetChecked(), "checkbox on the Guilds tab, unticked")
+    check(ui.keyword:IsShown() and ui.olympus:IsShown() and not ui.olympus:GetChecked(), "keyword button and Olympus box on the Guilds tab")
+    ui.input:SetText("Crank")
+    env.whoQuery = nil
+    ui.keyword:Click()
+    check(env.ns.db.keywords.crank == "Crank" and env.whoQuery == 'g-"Crank"' and ui.input:GetText() == "", "Add keyword blocks and scans")
+    env.whoAnswer(1, "Crank Squad")
+    local function labels()
+        local out = {}
+        for _, row in ipairs(ui.rows) do if row:IsShown() then out[#out + 1] = row.label:GetText() end end
+        return table.concat(out, ",")
+    end
+    check(labels() == 'any guild containing "Crank",Other Guild', "keywords are listed with the guilds")
+    ui.rows[1].remove:Click()
+    check(env.ns.db.keywords.crank == nil and labels() == "Other Guild", "Remove on a keyword row")
     env.whoQuery = nil
     ui.olympus:SetChecked(true)
     ui.olympus:Click()
-    check(env.ns.db.olympus == true and env.whoQuery == 'g-"Olympus"', "ticking it blocks and scans")
+    check(env.ns.db.keywords.olympus == "Olympus" and env.whoQuery == 'g-"Olympus"', "ticking Olympus adds the keyword and scans")
     env.whoAnswer(1, "Olympus Rising")
     ui.tabs[1]:Click()
-    check(not ui.olympus:IsShown(), "checkbox only on the Guilds tab")
+    check(not ui.olympus:IsShown() and not ui.keyword:IsShown(), "only on the Guilds tab")
     env.whoQuery = nil
     env.slash("scan")
-    check(env.whoQuery == 'g-"Olympus"', "a full scan looks Olympus guilds up first")
+    check(env.whoQuery == 'g-"Olympus"', "a full scan looks keywords up first")
     env.whoAnswer(1, "Olympus Rising")
     env.slash("scan")
     check(env.whoQuery == 'g-"Other Guild"', "then the listed guilds")
+end
+
+---------------------------------------------------------------------------
+-- The Blocked tab uses the space where other tabs have their input box
+---------------------------------------------------------------------------
+do
+    local env = boot()
+    for i = 1, 15 do env.ns.AddPlayer("Player " .. string.char(64 + i)) end
+    env.slash("")
+    local ui = env.ns.ui
+    ui.tabs[2]:Click()
+    check(ui.page:GetText() == "1-10 of 15" and not ui.rows[11]:IsShown(), "Players tab shows 10 rows")
+    ui.tabs[4]:Click()
+    check(ui.page:GetText() == "1-12 of 15" and ui.rows[12]:IsShown(), "Blocked tab shows 12 rows")
+    ui.next:Click()
+    check(ui.page:GetText() == "4-15 of 15", "paging by 12 on the Blocked tab")
 end
 
 ---------------------------------------------------------------------------

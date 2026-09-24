@@ -17,7 +17,7 @@
         reminderMinutes  remind to scan when lastScan is older than this (30 to 720)
         log          the last 100 hidden lines, oldest first (the window's Hidden tab)
         preview      show would-be-hidden lines with a tag instead of hiding them
-        olympus      also block every guild with "Olympus" in its name
+        keywords     { [normalized word] = "Shown Word" }   block every guild whose name contains it
         recentAuthors  the last few chat senders as the game wrote them (/rb debug)
 
     Chat messages don't say which guild the sender is in, so guilds are learned whenever the
@@ -195,13 +195,35 @@ function ns.IsPlayerFiltered(name)
     return wildcardMatch(ns.db.players, ns.NormalizeName(name))
 end
 
--- The Olympus toggle blocks every guild whose name contains this word (a streamer's many guilds).
-ns.OLYMPUS = "olympus"
+-- Guild keywords block every guild whose name contains the word, for a streamer's many guilds.
+-- "Olympus" is the one behind the checkbox in the window.
+ns.OLYMPUS = "Olympus"
 
 function ns.IsGuildFiltered(guild)
     local key = ns.NormalizeGuild(guild)
-    if ns.db.olympus and key:find(ns.OLYMPUS, 1, true) then return "Olympus guilds" end
+    if key == "" then return nil end
+    for k, shown in pairs(ns.db.keywords) do
+        if key:find(k, 1, true) then return ("guilds containing \"%s\""):format(shown) end
+    end
     return wildcardMatch(ns.db.guilds, key)
+end
+
+function ns.AddKeyword(word)
+    word = trim(word)
+    local key = ns.NormalizeGuild(word)
+    if key == "" then return nil, "type a word first." end
+    ns.db.keywords[key] = word
+    ns.Changed()
+    return word
+end
+
+function ns.RemoveKeyword(word)
+    local key = ns.NormalizeGuild(word)
+    local shown = ns.db.keywords[key]
+    if not shown then return nil, "not a guild keyword: " .. trim(word) end
+    ns.db.keywords[key] = nil
+    ns.Changed()
+    return shown
 end
 
 -- Records that `name` is in `guild`. An empty string means "in no guild" (known from /who).
@@ -361,7 +383,9 @@ function ns.LoadDB()
     db.log = db.log or {}
     db.exempt = db.exempt or {}
     if db.preview == nil then db.preview = false end
-    if db.olympus == nil then db.olympus = false end
+    db.keywords = db.keywords or {}
+    if db.olympus then db.keywords[ns.NormalizeGuild(ns.OLYMPUS)] = ns.OLYMPUS end   -- older setting
+    db.olympus = nil
 
     local cutoff = time() - KNOWN_DAYS * 86400
     for k, v in pairs(db.known) do

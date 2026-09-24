@@ -21,8 +21,10 @@
 
 local ADDON, ns = ...
 
-local ROWS = 10
+local ROWS = 10           -- rows on most tabs; a tab may set its own `rows` and `listTop`
+local MAX_ROWS = 12
 local ROW_HEIGHT = 22
+local LIST_TOP = -172
 local MASK = "********"
 
 local TABS = {
@@ -32,7 +34,7 @@ local TABS = {
       hint = "Add a player by name, or target them and press Add target:" },
     { key = "guilds", label = "Guilds", noun = "guild", add = "AddGuild", remove = "RemoveGuild",
       hint = "Add a guild by name, or target a member and press Add target:" },
-    { key = "blocked", label = "Blocked", noun = "blocked player",
+    { key = "blocked", label = "Blocked", noun = "blocked player", listTop = -122, rows = 12,
       hint = "Everyone blocked, and why. Exempt lets a person through anyway." },
     { key = "log", label = "Hidden", noun = "line", masked = true,
       hint = "Recently hidden lines, newest first. Masked until you press Show." },
@@ -106,6 +108,11 @@ end
 local function entries()
     local list = {}
     if current.key == "blocked" then return blockedEntries() end
+    if current.key == "guilds" then
+        for key, shown in pairs(ns.db.keywords) do
+            list[#list + 1] = { key = "kw:" .. key, text = ('any guild containing "%s"'):format(shown), keyword = shown }
+        end
+    end
     if current.key == "log" then
         local log = ns.db.log
         for i = #log, 1, -1 do list[#list + 1] = { log = log[i] } end
@@ -134,7 +141,9 @@ end
 function ns.RefreshUI()
     if not (ui.frame and ui.frame:IsShown()) then return end
     local list = entries()
-    offset = math.max(0, math.min(offset, #list - ROWS))
+    local rows = current.rows or ROWS
+    local top = current.listTop or LIST_TOP
+    offset = math.max(0, math.min(offset, #list - rows))
     local masked = current.masked and not revealed
     local isLog = current.key == "log"
 
@@ -143,9 +152,13 @@ function ns.RefreshUI()
     end
     ui.hint:SetText(current.hint)
 
+    ui.status:ClearAllPoints()
+    ui.status:SetPoint("TOPLEFT", 26, top + 18)
     for i, row in ipairs(ui.rows) do
-        local e = list[offset + i]
+        local e = (i <= rows) and list[offset + i] or nil
         row.entry = e
+        row:ClearAllPoints()
+        row:SetPoint("TOPLEFT", 24, top - (i - 1) * ROW_HEIGHT)
         if e then
             if isLog then
                 row.label:SetText(logLabel(e.log, masked))
@@ -169,13 +182,13 @@ function ns.RefreshUI()
     end
 
     ui.count:SetText(plural(#list, current.noun) .. (masked and #list > 0 and " (hidden)" or ""))
-    if #list > ROWS then
-        ui.page:SetText(("%d-%d of %d"):format(offset + 1, math.min(offset + ROWS, #list), #list))
+    if #list > rows then
+        ui.page:SetText(("%d-%d of %d"):format(offset + 1, math.min(offset + rows, #list), #list))
     else
         ui.page:SetText("")
     end
     if offset > 0 then ui.prev:Enable() else ui.prev:Disable() end
-    if offset + ROWS < #list then ui.next:Enable() else ui.next:Disable() end
+    if offset + rows < #list then ui.next:Enable() else ui.next:Disable() end
     ui.empty:SetText(isLog and "Nothing hidden yet." or current.key == "blocked" and "Nobody is blocked yet." or "Nothing here yet.")
     if #list == 0 then ui.empty:Show() else ui.empty:Hide() end
     if isLog then
@@ -205,8 +218,12 @@ function ns.RefreshUI()
         ui.reveal:Hide()
     end
     if current.masked or current.key == "blocked" then ui.target:Hide() else ui.target:Show() end
-    if current.key == "guilds" then ui.scan:Show() ui.olympus:Show() else ui.scan:Hide() ui.olympus:Hide() end
-    ui.olympus:SetChecked(ns.db.olympus)
+    if current.key == "guilds" then
+        ui.scan:Show() ui.keyword:Show() ui.olympus:Show()
+    else
+        ui.scan:Hide() ui.keyword:Hide() ui.olympus:Hide()
+    end
+    ui.olympus:SetChecked(ns.db.keywords[ns.NormalizeGuild(ns.OLYMPUS)] ~= nil)
 
     ui.checks.enabled:SetChecked(ns.db.enabled)
     ui.checks.alerts:SetChecked(ns.db.alerts)
@@ -287,6 +304,11 @@ end
 local function removeRow(row)
     local e = row.entry
     if not e then return end
+    if e.keyword then
+        ns.RemoveKeyword(e.keyword)
+        setStatus(('No longer blocking guilds containing "%s".'):format(e.keyword))
+        return
+    end
     if e.action == "Exempt" then
         ns.Exempt(e.text)
         setStatus(("%s is exempt: let through even though their guild is on your list."):format(e.text))
@@ -432,12 +454,27 @@ local function build()
     ui.target:SetPoint("TOPLEFT", 24, -126)
     ui.scan = button(f, "Scan", 90, function() ns.Scan("") end)
     ui.scan:SetPoint("TOPLEFT", 140, -126)
-    ui.olympus = checkbox(f, "Block Olympus guilds", "olympus", 236, -127)
-    ui.olympus:HookScript("OnClick", function(self)
+    ui.keyword = button(f, "Add keyword", 100, function()
+        local word, err = ns.AddKeyword(ui.input:GetText() or "")
+        if not word then setStatus("Type a word first: every guild containing it is blocked.", true) return end
+        ui.input:SetText("")
+        setStatus(('Blocking every guild containing "%s". Looking them up with /who...'):format(word))
+        ns.Scan(word)
+    end)
+    ui.keyword:SetPoint("TOPLEFT", 236, -126)
+    ui.olympus = CreateFrame("CheckButton", nil, f, "UICheckButtonTemplate")
+    ui.olympus:SetSize(24, 24)
+    ui.olympus:SetPoint("TOPLEFT", 340, -127)
+    local olympusLabel = fontString(ui.olympus)
+    olympusLabel:SetPoint("LEFT", ui.olympus, "RIGHT", 2, 0)
+    olympusLabel:SetText("Olympus")
+    ui.olympus:SetScript("OnClick", function(self)
         if self:GetChecked() then
+            ns.AddKeyword(ns.OLYMPUS)
             setStatus("Blocking every guild with Olympus in its name. Looking them up with /who...")
-            ns.Scan("Olympus")
+            ns.Scan(ns.OLYMPUS)
         else
+            ns.RemoveKeyword(ns.OLYMPUS)
             setStatus("Olympus guilds are no longer blocked as a group.")
         end
         ns.RefreshUI()
@@ -468,10 +505,10 @@ local function build()
     ui.status:SetJustifyH("LEFT")
 
     ui.rows = {}
-    for i = 1, ROWS do
+    for i = 1, MAX_ROWS do
         local row = CreateFrame("Frame", nil, f)
         row:SetSize(380, ROW_HEIGHT)
-        row:SetPoint("TOPLEFT", 24, -172 - (i - 1) * ROW_HEIGHT)
+        row:SetPoint("TOPLEFT", 24, LIST_TOP - (i - 1) * ROW_HEIGHT)
         if i % 2 == 1 then
             local bg = row:CreateTexture(nil, "BACKGROUND")
             bg:SetAllPoints()
@@ -504,9 +541,9 @@ local function build()
     ui.count:SetPoint("TOPLEFT", 26, listBottom - 4)
     ui.page = fontString(f)
     ui.page:SetPoint("TOP", 20, listBottom - 4)
-    ui.prev = button(f, "<", 30, function() scroll(-ROWS) end)
+    ui.prev = button(f, "<", 30, function() scroll(-(current.rows or ROWS)) end)
     ui.prev:SetPoint("TOPRIGHT", -62, listBottom)
-    ui.next = button(f, ">", 30, function() scroll(ROWS) end)
+    ui.next = button(f, ">", 30, function() scroll(current.rows or ROWS) end)
     ui.next:SetPoint("TOPRIGHT", -28, listBottom)
 
     local checksY = listBottom - 34
