@@ -3,6 +3,7 @@
 ## 0.1.2
 
 - Hovering a row on the Blocked tab shows the full name and guild.
+- The guild invite window is closed after an invite is declined (it stayed open before).
 - Release automation: CurseForge upload done directly, with the request shown in the build log.
 
 ## 0.1.1
