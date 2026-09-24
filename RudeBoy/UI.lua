@@ -360,7 +360,7 @@ local function checkbox(parent, label, key, x, y)
     local c = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
     c:SetSize(24, 24)
     c:SetPoint("TOPLEFT", x, y)
-    local text = fontString(parent)
+    local text = fontString(c)   -- a child of the checkbox, so it is hidden with it
     text:SetPoint("LEFT", c, "RIGHT", 2, 0)
     text:SetText(label)
     c:SetScript("OnClick", function(self)
