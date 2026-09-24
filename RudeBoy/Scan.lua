@@ -148,9 +148,10 @@ function ns.Scan(guild)
             P("a wildcard entry can't be looked up; give a full guild name.")
             return
         end
-        -- Carry on with this guild's split searches if they are queued, else start it fresh.
+        -- Carry on with this guild's split searches if they are next; otherwise put it at the
+        -- front, ahead of whatever else is queued.
         if not (queue[1] and ns.NormalizeGuild(queue[1].guild) == ns.NormalizeGuild(guild)) then
-            queue = { { guild = guild } }
+            table.insert(queue, 1, { guild = guild })
         end
     elseif #queue == 0 then
         for _, g in ipairs(sortedGuilds()) do queue[#queue + 1] = { guild = g } end

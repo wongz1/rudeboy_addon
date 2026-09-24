@@ -341,6 +341,15 @@ do
     multi.fire("CHAT_MSG_SYSTEM", "2 players total")
     check(multi.lastPrint():find("2 found") and multi.lastPrint():find("Scan finished"), "answers printed to chat count too")
 
+    -- a guild added mid-scan goes to the front; the rest of the queue is kept
+    multi.slash("scan")                       -- Alpha again (fresh queue: Alpha, Beta)
+    multi.whoAnswer(1, "Alpha")
+    multi.slash("guild add Delta")            -- Delta jumps the queue
+    check(multi.whoQuery == 'g-"Delta"', "a guild added during a scan is looked up next")
+    multi.whoAnswer(1, "Delta")
+    multi.slash("scan")
+    check(multi.whoQuery == 'g-"Beta"', "and the rest of the queue carries on")
+
     -- naming a guild repeatedly carries on with its queued searches
     local named = boot()
     named.slash("guild add Big Guild")
