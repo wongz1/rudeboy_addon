@@ -18,9 +18,8 @@ jobs:
       CF_API_KEY: ${{ secrets.CF_API_KEY }}
       CF_PROJECT_ID: "1709294"
     steps:
+      # the current main is checked out (for tools/ and CHANGELOG.md); the zip comes from the tag
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.tag }}
 
       - name: Fetch the release zip
         run: |
@@ -29,12 +28,13 @@ jobs:
 
       - name: Build the metadata
         run: |
-          version=$(sed -n 's/^## Version: *//p' RudeBoy/RudeBoy.toc | tr -d '\r')
+          version=$(unzip -p "$(ls dist/*.zip | head -1)" RudeBoy/RudeBoy.toc | sed -n 's/^## Version: *//p' | tr -d '\r')
           versions=$(curl -sS -H "x-api-token: $CF_API_KEY" https://wow.curseforge.com/api/game/versions)
           ids=$(echo "$versions" | jq -c '[.[] | select(.gameVersionTypeID == 88568 and .name == "1.60.1") | .id]')
           echo "version $version, game version ids $ids"
           [ "$ids" != "[]" ] || { echo "no WoW Forever 1.60.1 entry on CurseForge"; exit 1; }
-          changelog=$(awk '/^## /{n++} n==1' CHANGELOG.md)
+          changelog=$(awk -v v="## $version" '$0 == v {p=1; print; next} /^## / {p=0} p' CHANGELOG.md)
+          [ -n "$changelog" ] || { echo "no '## $version' section in CHANGELOG.md"; exit 1; }
           jq -n --arg name "v$version" --argjson ids "$ids" --arg cl "$changelog" \
             '{displayName: $name, gameVersions: $ids, releaseType: "beta", changelog: $cl, changelogType: "markdown"}' > meta.json
           cat meta.json
