@@ -141,7 +141,10 @@ local function guildCmd(action, arg)
             guild = g
         end
         local added, err = ns.AddGuild(guild)
-        P(added and ("filtering guild <%s>. Run /rb scan to learn its online members now."):format(added) or err)
+        if not added then P(err) return end
+        P(("filtering guild <%s>."):format(added))
+        -- adding came from your key press, so the first /who may go out right now
+        if not added:find("*", 1, true) then ns.Scan(added) end
     elseif action == "remove" then
         local removed, err = ns.RemoveGuild(arg)
         P(removed and ("no longer filtering guild <%s>."):format(removed) or err)

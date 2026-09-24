@@ -263,6 +263,8 @@ local function addFromInput()
         setStatus(("Added %s."):format(plural(#added, current.noun)))
     else
         setStatus(("Added %s."):format(table.concat(added, ", ")))
+        -- adding a guild came from a click or Enter, so its first /who may go out right now
+        if current.key == "guilds" and not added[1]:find("*", 1, true) then ns.Scan(added[1]) end
     end
 end
 
@@ -276,7 +278,8 @@ local function addTarget()
         setStatus(("%s is not in a guild, or it hasn't loaded yet."):format(name), true)
     else
         ns.AddGuild(guild)
-        setStatus(("Added <%s>. Press Scan to find its online members."):format(guild))
+        setStatus(("Added <%s>. Looking up its online members with /who..."):format(guild))
+        ns.Scan(guild)
     end
 end
 

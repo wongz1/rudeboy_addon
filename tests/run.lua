@@ -261,6 +261,9 @@ end
 do
     local env = boot()
     env.slash("guild add Big Guild")
+    check(env.whoQuery == 'g-"Big Guild"', "adding a guild sends its first /who at once")
+    env.whoAnswer(3, "Big Guild")
+    env.whoQuery = nil
     env.slash("scan")
     check(env.whoQuery == 'g-"Big Guild"', "scan with no name starts with the whole guild")
     env.whoAnswer(12, "Big Guild")
@@ -298,8 +301,11 @@ do
     -- several guilds, one search each run; waits for answers; resends a lost search
     local multi = boot()
     multi.slash("guild add Alpha")
+    multi.whoAnswer(1, "Alpha")     -- adding looks each guild up at once; answer so the next can go
     multi.slash("guild add Beta")
+    multi.whoAnswer(1, "Beta")
     multi.slash("guild add Gamma*")
+    check(multi.whoQuery == 'g-"Beta"', "a wildcard guild is not looked up when added")
     multi.slash("scan")
     check(multi.whoQuery == 'g-"Alpha"', "first guild")
     multi.slash("scan")
@@ -495,7 +501,15 @@ do
     ui.tabs[3]:Click()
     check(ui.empty:IsShown() and ui.scan:IsShown(), "guilds tab starts empty and has Scan")
     ui.target:Click()
-    check(labels() == "Bad Guild", "Add target adds the target's guild")
+    check(labels() == "Bad Guild" and env.whoQuery == 'g-"Bad Guild"', "Add target adds the target's guild and looks it up at once")
+    env.whoAnswer(2, "Bad Guild")
+    env.whoQuery = nil
+    ui.input:SetText("Typed Guild")
+    ui.add:Click()
+    check(env.whoQuery == 'g-"Typed Guild"', "a guild typed into the window is looked up at once")
+    env.whoAnswer(2, "Typed Guild")
+    ui.rows[2].remove:Click()   -- Typed Guild
+    env.whoQuery = nil
     ui.scan:Click()
     check(env.whoQuery == 'g-"Bad Guild"', "Scan sends /who")
     ui.rows[1].remove:Click()
