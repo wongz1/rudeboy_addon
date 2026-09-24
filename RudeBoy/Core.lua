@@ -27,6 +27,10 @@
 local ADDON, ns = ...
 ns.VERSION = "0.1.0"
 
+-- True when Saved.lua (see the .toc) has already put the last save in place. The client's own
+-- loading, when it works, happens later, at ADDON_LOADED.
+ns.restoredFromLink = RudeBoyDB ~= nil
+
 local PREFIX = "|cffff5555RudeBoy|r: "
 local KNOWN_DAYS = 30        -- forget a player's guild after this many days unseen
 

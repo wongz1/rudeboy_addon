@@ -13,6 +13,12 @@
 # To confirm, run in game:  /run print((select(4, GetBuildInfo())))
 # If the addon shows as "out of date", tick "Load out of date AddOns" on the AddOns screen.
 
+# Saved.lua works around a WoW Forever beta bug: the client writes addon settings to
+# WTF/Account/<account>/SavedVariables/RudeBoy.lua but never reads them back. When Saved.lua is a
+# link to that file (tools/link-saved-settings.sh), the last save is loaded here as code. It is
+# fine for the file to be missing: the game skips it. Once Blizzard fixes the loader, the real
+# settings load afterwards and take over.
+Saved.lua
 Core.lua
 Chat.lua
 Group.lua

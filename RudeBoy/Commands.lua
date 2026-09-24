@@ -183,8 +183,9 @@ end
 
 local function printDebug()
     local _, _, _, toc = GetBuildInfo()
-    P(("saved settings %s (seen at: %s); last saved %s; RudeBoyDB is %s"):format(
+    P(("saved settings %s (seen at: %s%s); last saved %s; RudeBoyDB is %s"):format(
         ns.loadedFromDisk and "were found" or "were NOT found", tostring(ns.dbSeenAt or "never"),
+        ns.restoredFromLink and ", via the linked Saved.lua" or "",
         tostring(ns.db.savedAt or "never"), RudeBoyDB == ns.db and "the addon's table" or "NOT the addon's table"))
     P(("interface %s, realm %s / %s"):format(tostring(toc), quoted(GetRealmName and GetRealmName()),
         quoted(GetNormalizedRealmName and GetNormalizedRealmName())))

@@ -177,10 +177,12 @@ local function announce()
     local db = ns.db
     local function count(t) local n = 0 for _ in pairs(t) do n = n + 1 end return n end
     if ns.loadedFromDisk then
-        ns.Print(("v%s: settings loaded (%d words, %d players, %d guilds, %d guild members known; last saved %s). /rb opens the window."):format(
-            ns.VERSION, count(db.words), count(db.players), count(db.guilds), count(db.known), db.savedAt or "unknown"))
+        ns.Print(("v%s: settings %s (%d words, %d players, %d guilds, %d guild members known; last saved %s). /rb opens the window."):format(
+            ns.VERSION, ns.restoredFromLink and "restored from the linked save file" or "loaded",
+            count(db.words), count(db.players), count(db.guilds), count(db.known), db.savedAt or "unknown"))
     else
-        ns.Print(("v%s: no saved settings found on disk, starting fresh. /rb opens the window."):format(ns.VERSION))
+        ns.Print(("v%s: no saved settings found, starting fresh. /rb opens the window."):format(ns.VERSION))
+        ns.Print("The WoW Forever beta doesn't load addon settings itself. See the README for the one-time fix (tools/link-saved-settings.sh).")
     end
 end
 

@@ -10,7 +10,8 @@ local ADDON_DIR = "RudeBoy/"
 local FILES = {}
 for line in io.lines(ADDON_DIR .. "RudeBoy.toc") do
     local file = line:match("^([^#%s].-%.lua)%s*$")
-    if file then FILES[#FILES + 1] = (file:gsub("\\", "/")) end
+    -- Saved.lua is a link to a real save file on the developer's machine; tests never load it
+    if file and file ~= "Saved.lua" then FILES[#FILES + 1] = (file:gsub("\\", "/")) end
 end
 
 local realPrint = print
@@ -786,7 +787,9 @@ do
     check(watched.ns.db.words.fromdisk and watched.ns.dbSeenAt == "late (12s after login)", "a hand-over within a minute of login is caught by the watcher")
 
     local again = boot({ db = fresh.ns.db })
-    check(again.prints[1]:find("settings loaded") and again.prints[1]:find("last saved 12:00"), "login says settings loaded and when saved")
+    check(again.prints[1]:find("settings restored") and again.prints[1]:find("last saved 12:00"), "login says settings were found and when saved")
+    check(again.ns.restoredFromLink and again.prints[1]:find("restored from the linked save file"), "a table present before the addon's files run counts as restored by Saved.lua")
+    check(fresh.prints[2]:find("tools/link%-saved%-settings%.sh"), "a fresh start points at the fix")
 end
 
 realPrint(("%d passed, %d failed"):format(passed, failed))

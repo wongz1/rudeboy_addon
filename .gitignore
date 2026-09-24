@@ -1,2 +1,5 @@
 # built by the packager when run locally
 .release/
+
+# a link to the game's save file on the developer's machine (tools/link-saved-settings.sh)
+RudeBoy/Saved.lua

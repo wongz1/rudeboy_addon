@@ -24,6 +24,23 @@ Restart the game. If it shows as out of date, tick "Load out of date AddOns" on 
 
 From a copy of this repo, copy (or symlink) the `RudeBoy` folder instead.
 
+## WoW Forever beta: settings don't load (client bug, one-time fix)
+
+The beta client writes addon settings to `WTF/Account/<account>/SavedVariables/RudeBoy.lua` at
+logout, `/reload` and `/exit`, but never reads them back, for every addon. Rude Boy prints
+"no saved settings found" at login when this happens. Until Blizzard fixes it:
+
+- **macOS / Linux:** with the game closed, run `tools/link-saved-settings.sh` once (pass the game
+  folder if it isn't `/Applications/World of Warcraft/_classic_beta_`). It links the save file into
+  the addon as `RudeBoy/Saved.lua`, which the client does load. The login line then says
+  "settings restored from the linked save file".
+- **Windows:** use [ForeverSVFix](https://github.com/nobewayo/ForeverSVFix) or
+  [SVShim](https://github.com/kylef000/wow-forever-svshim), which do this for every addon, or make
+  the link by hand: `mklink "Interface\AddOns\RudeBoy\Saved.lua" "WTF\Account\<account>\SavedVariables\RudeBoy.lua"`.
+
+Once the client loads settings again, the real ones load after `Saved.lua` and take over; the link
+can stay or go.
+
 ## The window
 
 Type `/rb` to open it (again, or Escape, to close). It has a tab each for **Words**, **Players**
