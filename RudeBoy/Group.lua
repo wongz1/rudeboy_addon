@@ -134,16 +134,39 @@ local function onInvite(inviter, guid)
     end
 end
 
--- A guild invite is blocked if the inviter is on your lists, or the guild itself is.
-local function onGuildInvite(inviter, guildName)
+-- Declines the pending guild invite with whichever function this client has, and closes
+-- its pop-up. Returns false if the client offers no way to decline.
+local function declineGuildInvite()
+    local fn = DeclineGuild or (C_GuildInfo and C_GuildInfo.DeclineGuild)
+    if not fn then return false end
+    local ok = pcall(fn)
+    if StaticPopup_Hide then pcall(StaticPopup_Hide, "GUILD_INVITE") end
+    return ok
+end
+
+-- A guild invite is blocked if the inviter is on your lists, or the guild itself is. The
+-- guild name is normally the second value; any later string that is on your list counts too.
+local function onGuildInvite(...)
+    ns.lastGuildInvite = { ... }   -- for /rb debug, to see what this client sends
+    local inviter, guildName = ...
     local why = inviter and ns.PersonReason(inviter)
-    if not why and guildName and ns.IsGuildFiltered(guildName) then why = "guild on your list" end
+    if not why then
+        for i = 2, select("#", ...) do
+            local v = select(i, ...)
+            if type(v) == "string" and ns.IsGuildFiltered(v) then
+                guildName, why = v, "guild on your list"
+                break
+            end
+        end
+    end
     if not why then return end
     local who = ("%s <%s>"):format(tostring(inviter), tostring(guildName))
-    if ns.db.declineGuild and DeclineGuild then
-        DeclineGuild()
-        if StaticPopup_Hide then StaticPopup_Hide("GUILD_INVITE") end
-        ns.Alert(("Declined a guild invite from %s (%s)."):format(who, why))
+    if ns.db.declineGuild then
+        if declineGuildInvite() then
+            ns.Alert(("Declined a guild invite from %s (%s)."):format(who, why))
+        else
+            ns.Alert(("%s is inviting you to their guild (%s). This client gives no way to decline it for you."):format(who, why))
+        end
     else
         ns.Alert(("%s is inviting you to their guild (%s)."):format(who, why))
     end
@@ -218,6 +241,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
         if ns.db.alerts or ns.db.autoDecline then onInvite((...), type(guid) == "string" and guid or nil) end
     elseif event == "GUILD_INVITE_REQUEST" then
         if ns.db.alerts or ns.db.declineGuild then onGuildInvite(...) end
+        if not (ns.db.alerts or ns.db.declineGuild) then ns.lastGuildInvite = { ... } end
     elseif event == "GROUP_ROSTER_UPDATE" or event == "PARTY_MEMBERS_CHANGED" or event == "RAID_ROSTER_UPDATE" then
         if ns.db.alerts then
             ns.CheckGroup(false)

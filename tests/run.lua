@@ -360,6 +360,17 @@ do
     check(env.guildDeclined == 1 and env.alerts[5]:find("Declined a guild invite"), "guild invite from a blocked guild declined")
     env.fire("GUILD_INVITE_REQUEST", "Nice Person", "Nice Guild")
     check(env.guildDeclined == 1, "guild invites from others still not declined")
+    env.fire("GUILD_INVITE_REQUEST", "Nice Person", 123, "Streamer Army")
+    check(env.guildDeclined == 2, "the guild name is found even when it isn't the second value")
+    _G.DeclineGuild = nil
+    env.fire("GUILD_INVITE_REQUEST", "Nice Person", "Streamer Army")
+    check(env.alerts[#env.alerts]:find("no way to decline"), "says so when the client can't decline")
+    _G.C_GuildInfo = { DeclineGuild = function() env.guildDeclined = env.guildDeclined + 1 end }
+    env.fire("GUILD_INVITE_REQUEST", "Nice Person", "Streamer Army")
+    check(env.guildDeclined == 3, "falls back to C_GuildInfo.DeclineGuild")
+    _G.DeclineGuild = function() env.guildDeclined = env.guildDeclined + 1 end
+    env.slash("debug")
+    check(table.concat(env.prints, "\n"):find('last guild invite event: "Nice Person", "Streamer Army"', 1, true), "/rb debug shows the last guild invite")
     env.slash("decline party off")
     check(env.ns.db.autoDecline == false, "/rb decline party off")
     env.slash("autodecline on")

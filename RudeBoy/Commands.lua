@@ -199,6 +199,12 @@ local function printDebug()
                 quoted(UnitFullName and UnitFullName(unit)), ns.NormalizeName(ns.UnitFullName(unit))))
         end
     end
+    if ns.lastGuildInvite then
+        P("last guild invite event: " .. quoted(unpack(ns.lastGuildInvite)) .. (DeclineGuild and " | DeclineGuild exists" or " | no DeclineGuild")
+            .. ((C_GuildInfo and C_GuildInfo.DeclineGuild) and ", C_GuildInfo.DeclineGuild exists" or ""))
+    else
+        P("no guild invite seen this session" .. (DeclineGuild and " (DeclineGuild exists)" or " (no DeclineGuild on this client)"))
+    end
     if #ns.recentAuthors == 0 then P("no chat senders seen yet.") end
     for _, a in ipairs(ns.recentAuthors) do
         local names = ns.NamesFor(a.author, a.guid)

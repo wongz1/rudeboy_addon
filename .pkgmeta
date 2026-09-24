@@ -6,6 +6,7 @@ package-as: RudeBoy
 move-folders:
   RudeBoy/RudeBoy: RudeBoy
 
+# CHANGELOG.md must not be ignored: the packager reads it from the build for the upload notes
 manual-changelog:
   filename: CHANGELOG.md
   markup-type: markdown
@@ -14,4 +15,3 @@ ignore:
   - tests
   - README.md
   - RELEASING.md
-  - CHANGELOG.md
