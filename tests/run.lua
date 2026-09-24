@@ -143,6 +143,7 @@ local function boot(opts)
     end
     -- answers the last /who with `total` matches, of which at most 50 are shown
     function env.whoAnswer(total, guild)
+        env.now = env.now + 7   -- an answer takes a moment, and the next search must wait anyway
         env.who = {}
         for i = 1, math.min(total, 50) do env.who[i] = { fullName = "Member " .. i .. (env.whoQuery or ""), fullGuildName = guild } end
         env.whoTotal = total
@@ -152,7 +153,8 @@ local function boot(opts)
     function env.filterRaw(event, msg, author, lineID, channel)
         return env.filters[event]({}, event, msg, author, "", "", "", "", 0, 0, channel or "", 0, lineID, "Player-1-" .. author)
     end
-    function env.slash(input) _G.SlashCmdList["RUDEBOY"](input) end
+    -- typing a command takes a human a few seconds, which also satisfies the /who gap
+    function env.slash(input) env.now = env.now + 7 _G.SlashCmdList["RUDEBOY"](input) end
     function env.lastPrint() return env.prints[#env.prints] or "" end
     return env
 end
@@ -321,6 +323,15 @@ do
     check(multi.whoQuery == 'g-"Alpha"', "first guild")
     multi.slash("scan")
     check(multi.lastPrint():find("still waiting"), "won't send over an unanswered search")
+    multi.fire("CHAT_MSG_SYSTEM", "You must wait a moment before using /who again.")
+    check(multi.lastPrint():find("Run /rb scan again in 6 seconds"), "the server's wait message puts the search back and says so")
+    multi.ns.Scan("")   -- straight away, no time passing
+    check(multi.lastPrint():find("try again in %d second"), "and a scan inside the gap is refused with the time left")
+    multi.now = multi.now + 7
+    multi.slash("scan")
+    check(multi.whoQuery == 'g-"Alpha"', "after the gap the dropped search goes out again")
+    multi.slash("scan")
+    check(multi.lastPrint():find("still waiting"), "(back to waiting for its answer)")
     multi.now = multi.now + 10
     multi.slash("scan")
     check(multi.whoQuery == 'g-"Alpha"', "a search with no answer is sent again")

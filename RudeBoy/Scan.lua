@@ -17,11 +17,13 @@ local P = ns.Print
 
 local CAP = 50            -- the most people one /who shows
 local TIMEOUT = 8         -- seconds to wait for an answer before sending the search again
+local GAP = 6             -- the server allows about one /who this many seconds apart
 local CLASSES = { "Warrior", "Paladin", "Hunter", "Rogue", "Priest", "Shaman", "Mage", "Warlock", "Druid" }
 local LEVELS = { "1-29", "30-49", "50-59", "60-100" }
 
 local queue = {}          -- searches still to send: { guild = , class = , level = }
 local inflight            -- { search = , sentAt = } waiting for its answer
+local lastSent = -GAP     -- GetTime() of the last /who sent
 
 function ns.WhoQuery(s)
     local q = ('g-"%s"'):format(s.guild)
@@ -72,7 +74,17 @@ local function send(s)
         return false
     end
     inflight = { search = s, sentAt = GetTime() }
+    lastSent = inflight.sentAt
     return true
+end
+
+-- The server answered "wait a moment before using /who again": that search was dropped.
+function ns.ScanThrottled()
+    if not inflight then return end
+    table.insert(queue, 1, inflight.search)
+    inflight = nil
+    lastSent = GetTime()   -- the refusal restarts the server's timer
+    P(("the server allows one /who every few seconds. Run /rb scan again in %d seconds (%d to go)."):format(GAP, #queue))
 end
 
 local function remaining()
@@ -117,6 +129,11 @@ local function sortedGuilds()
 end
 
 function ns.Scan(guild)
+    local wait = GAP - (GetTime() - lastSent)
+    if wait > 0 and not inflight then
+        P(("the server allows one /who every few seconds; try again in %d second%s."):format(math.ceil(wait), math.ceil(wait) == 1 and "" or "s"))
+        return
+    end
     if inflight then
         if GetTime() - inflight.sentAt < TIMEOUT then
             P("still waiting for the last /who answer, try again in a moment.")

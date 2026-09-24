@@ -75,7 +75,10 @@ function ns.LearnWhoLine(msg)
         return
     end
     local total = tonumber(msg:match("^(%d+) players? total"))
-    if total and ns.ScanResults then ns.ScanResults(total, total) end
+    if total and ns.ScanResults then ns.ScanResults(total, total) return end
+    -- "You must wait a moment before using /who again." (or similar): the search was dropped
+    local lower = msg:lower()
+    if lower:find("/who", 1, true) and lower:find("wait", 1, true) and ns.ScanThrottled then ns.ScanThrottled() end
 end
 
 ---------------------------------------------------------------------------
