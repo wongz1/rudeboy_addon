@@ -3,9 +3,10 @@
 
     CF_API_KEY=... python3 tools/cf_upload.py <project id> <metadata.json> <zip> [url]
 
-The multipart body is built here with an explicit Content-Length, because the curl on GitHub's
-runners streams form uploads without one, which CurseForge rejects (411, or "Missing field
-metadata" over HTTP/2). Prints CurseForge's reply; exits 0 on HTTP 200.
+The token is trimmed of whitespace: a repository secret saved with a trailing newline breaks
+the request when sent by curl, which is what made the packager's upload fail with "Missing
+field metadata". The multipart body is built here with an explicit Content-Length. Prints
+CurseForge's reply; exits 0 on HTTP 200.
 """
 
 import json
@@ -40,7 +41,9 @@ def main():
         return 2
     project, meta_path, zip_path = sys.argv[1:4]
     url = sys.argv[4] if len(sys.argv) > 4 else f"https://wow.curseforge.com/api/projects/{project}/upload-file"
-    token = os.environ.get("CF_API_KEY", "")
+    # a secret pasted with a trailing newline would otherwise break the header (and, sent by
+    # curl, confuses CurseForge into "Missing field metadata")
+    token = os.environ.get("CF_API_KEY", "").strip()
 
     with open(meta_path, "rb") as f:
         metadata = json.dumps(json.load(f))   # validates the JSON and compacts it

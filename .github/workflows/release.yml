@@ -19,9 +19,9 @@ jobs:
       WAGO_API_TOKEN: ${{ secrets.WAGO_API_TOKEN }}
       WOWI_API_TOKEN: ${{ secrets.WOWI_API_TOKEN }}
       # CF_API_KEY is given only to the upload step below, not to the packager: the packager
-      # uploads with the runner's curl, which streams the form without a Content-Length and
-      # CurseForge rejects that ("Missing field metadata" / 411). tools/cf_upload.py is used
-      # instead. .github/workflows/cf-upload.yml re-runs the upload for a tag if this fails.
+      # sends the token as pasted, and a secret saved with a trailing newline makes CurseForge
+      # reject the upload ("Missing field metadata"). tools/cf_upload.py trims it.
+      # .github/workflows/cf-upload.yml re-runs the upload for a tag if this step fails.
     steps:
       - uses: actions/checkout@v4
         with:
@@ -71,5 +71,4 @@ jobs:
             '{displayName: $name, gameVersions: $ids, releaseType: "beta", changelog: $cl, changelogType: "markdown"}' > meta.json
           echo "metadata:"; cat meta.json
 
-          # not curl: the runner's curl streams the form without a length, which CurseForge rejects
           python3 tools/cf_upload.py "$CF_PROJECT_ID" meta.json "$zip"
