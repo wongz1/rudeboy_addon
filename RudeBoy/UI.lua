@@ -31,7 +31,7 @@ local TABS = {
     { key = "players", label = "Players", noun = "player", add = "AddPlayer", remove = "RemovePlayer",
       hint = "Add a player by name, or target them and press Add target:" },
     { key = "guilds", label = "Guilds", noun = "guild", add = "AddGuild", remove = "RemoveGuild",
-      hint = "Add a guild by name, or target a member and press Add target:" },
+      hint = "Add a guild by name, or target a member and press Add target. Olympus guilds: every guild with that word in its name." },
     { key = "blocked", label = "Blocked", noun = "blocked player",
       hint = "Everyone Rude Boy blocks, and why. Exempt lets a person through even though their guild is on your list." },
     { key = "log", label = "Hidden", noun = "line", masked = true,
@@ -205,7 +205,8 @@ function ns.RefreshUI()
         ui.reveal:Hide()
     end
     if current.masked or current.key == "blocked" then ui.target:Hide() else ui.target:Show() end
-    if current.key == "guilds" then ui.scan:Show() else ui.scan:Hide() end
+    if current.key == "guilds" then ui.scan:Show() ui.olympus:Show() else ui.scan:Hide() ui.olympus:Hide() end
+    ui.olympus:SetChecked(ns.db.olympus)
 
     ui.checks.enabled:SetChecked(ns.db.enabled)
     ui.checks.alerts:SetChecked(ns.db.alerts)
@@ -430,6 +431,16 @@ local function build()
     ui.target:SetPoint("TOPLEFT", 24, -126)
     ui.scan = button(f, "Scan", 90, function() ns.Scan("") end)
     ui.scan:SetPoint("TOPLEFT", 140, -126)
+    ui.olympus = checkbox(f, "Block Olympus guilds", "olympus", 236, -127)
+    ui.olympus:HookScript("OnClick", function(self)
+        if self:GetChecked() then
+            setStatus("Blocking every guild with Olympus in its name. Looking them up with /who...")
+            ns.Scan("Olympus")
+        else
+            setStatus("Olympus guilds are no longer blocked as a group.")
+        end
+        ns.RefreshUI()
+    end)
     ui.reveal = button(f, "Show", 90, function()
         revealed = not revealed
         ns.RefreshUI()

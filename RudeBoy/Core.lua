@@ -17,6 +17,7 @@
         reminderMinutes  remind to scan when lastScan is older than this (30 to 720)
         log          the last 100 hidden lines, oldest first (the window's Hidden tab)
         preview      show would-be-hidden lines with a tag instead of hiding them
+        olympus      also block every guild with "Olympus" in its name
         recentAuthors  the last few chat senders as the game wrote them (/rb debug)
 
     Chat messages don't say which guild the sender is in, so guilds are learned whenever the
@@ -194,8 +195,13 @@ function ns.IsPlayerFiltered(name)
     return wildcardMatch(ns.db.players, ns.NormalizeName(name))
 end
 
+-- The Olympus toggle blocks every guild whose name contains this word (a streamer's many guilds).
+ns.OLYMPUS = "olympus"
+
 function ns.IsGuildFiltered(guild)
-    return wildcardMatch(ns.db.guilds, ns.NormalizeGuild(guild))
+    local key = ns.NormalizeGuild(guild)
+    if ns.db.olympus and key:find(ns.OLYMPUS, 1, true) then return "Olympus guilds" end
+    return wildcardMatch(ns.db.guilds, key)
 end
 
 -- Records that `name` is in `guild`. An empty string means "in no guild" (known from /who).
@@ -355,6 +361,7 @@ function ns.LoadDB()
     db.log = db.log or {}
     db.exempt = db.exempt or {}
     if db.preview == nil then db.preview = false end
+    if db.olympus == nil then db.olympus = false end
 
     local cutoff = time() - KNOWN_DAYS * 86400
     for k, v in pairs(db.known) do

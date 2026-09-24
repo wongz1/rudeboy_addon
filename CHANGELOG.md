@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- "Block Olympus guilds" toggle (Guilds tab, or `/rb olympus on`): blocks every guild with
+  "Olympus" in its name, and looks their members up with one `/who`.
+
 ## 0.1.3
 
 - Release automation: the CurseForge upload now works from GitHub. No changes to the addon itself.

@@ -40,6 +40,10 @@ local function boot(opts)
     -- Frames record scripts, events, text, shown/checked/enabled state; any other method is a no-op.
     local methods = {}
     function methods:SetScript(k, fn) self.scripts[k] = fn end
+    function methods:HookScript(k, fn)
+        local prev = self.scripts[k]
+        self.scripts[k] = function(...) if prev then prev(...) end fn(...) end
+    end
     function methods:RegisterEvent(e) self.events[e] = true end
     function methods:Show()
         if self.shown then return end
@@ -817,6 +821,46 @@ do
     check(again.prints[1]:find("settings restored") and again.prints[1]:find("last saved 12:00"), "login says settings were found and when saved")
     check(again.ns.restoredFromLink and again.prints[1]:find("restored from the linked save file"), "a table present before the addon's files run counts as restored by Saved.lua")
     check(fresh.prints[2]:find("LinkSavedSettings%.cmd"), "a fresh start points at the fix")
+end
+
+---------------------------------------------------------------------------
+-- The Olympus toggle
+---------------------------------------------------------------------------
+do
+    local env = boot()
+    check(env.ns.IsGuildFiltered("Mount Olympus Raiders") == nil, "off by default")
+    env.slash("olympus on")
+    check(env.ns.db.olympus == true and env.whoQuery == 'g-"Olympus"', "/rb olympus on blocks and looks the guilds up at once")
+    env.whoAnswer(4, "Olympus Rising")
+    check(env.ns.IsGuildFiltered("Mount Olympus Raiders") and env.ns.IsGuildFiltered("OLYMPUS") and env.ns.IsGuildFiltered("olympus ii"),
+        "any guild with the word is blocked, any case")
+    check(env.ns.IsGuildFiltered("Olympian Legends") == nil, "the whole word must appear")
+    env.ns.RememberGuild("Some Fan", "Olympus Rising")
+    check(env.chat("CHAT_MSG_SAY", "hi", "Some Fan") == true, "members of those guilds are hidden")
+    env.slash("exempt add Some Fan")
+    check(env.chat("CHAT_MSG_SAY", "hi", "Some Fan") == false, "exemptions still apply")
+    env.slash("olympus off")
+    check(env.ns.IsGuildFiltered("Mount Olympus Raiders") == nil, "/rb olympus off")
+
+    env.slash("guild add Other Guild")
+    env.whoAnswer(1, "Other Guild")
+    env.slash("")
+    local ui = env.ns.ui
+    ui.tabs[3]:Click()
+    check(ui.olympus:IsShown() and not ui.olympus:GetChecked(), "checkbox on the Guilds tab, unticked")
+    env.whoQuery = nil
+    ui.olympus:SetChecked(true)
+    ui.olympus:Click()
+    check(env.ns.db.olympus == true and env.whoQuery == 'g-"Olympus"', "ticking it blocks and scans")
+    env.whoAnswer(1, "Olympus Rising")
+    ui.tabs[1]:Click()
+    check(not ui.olympus:IsShown(), "checkbox only on the Guilds tab")
+    env.whoQuery = nil
+    env.slash("scan")
+    check(env.whoQuery == 'g-"Olympus"', "a full scan looks Olympus guilds up first")
+    env.whoAnswer(1, "Olympus Rising")
+    env.slash("scan")
+    check(env.whoQuery == 'g-"Other Guild"', "then the listed guilds")
 end
 
 realPrint(("%d passed, %d failed"):format(passed, failed))

@@ -16,6 +16,7 @@
     /rb exempt add <name>        let a player through despite your player and guild lists
     /rb exempt remove <name>
     /rb exempt list
+    /rb olympus on | off         also block every guild with "Olympus" in its name
     /rb scan [guild]             /who your filtered guilds so their online members are learned;
                                  run it again for each next search (big guilds are split up)
     /rb check                    check your current group now
@@ -39,6 +40,7 @@ local HELP = {
     "/rb player add [name] | remove <name> | list   (no name = your target)",
     "/rb guild add [guild] | remove <guild> | list   (no guild = your target's guild)",
     "/rb exempt add <name> | remove <name> | list - let someone through despite the lists",
+    "/rb olympus on | off - also block every guild with Olympus in its name",
     "/rb scan [guild] - /who your guilds to learn who is in them (run again for each next search)",
     "/rb check - check your group now",
     "/rb alerts on | off,  /rb decline party on | off,  /rb decline guild on | off",
@@ -257,6 +259,10 @@ SlashCmdList["RUDEBOY"] = function(input)
         guildCmd(action, arg)
     elseif cmd == "exempt" or cmd == "exempts" then
         exemptCmd(action, arg)
+    elseif cmd == "olympus" then
+        local was = ns.db.olympus
+        toggle("olympus", action, "blocking every guild with Olympus in its name")
+        if ns.db.olympus and not was then ns.Scan("Olympus") end   -- the toggle came from a key press
     elseif cmd == "scan" then
         ns.Scan(rest)
     elseif cmd == "check" then

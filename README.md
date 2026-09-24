@@ -5,7 +5,8 @@ It never sends anything to chat, and nobody else can tell you are using it.
 
 - **Words.** If a chat line contains a word or phrase from your list, the whole line is hidden.
 - **Players.** Every line from a player on your list is hidden. This list has no size limit, unlike /ignore.
-- **Guilds.** Every line from a member of a guild on your list is hidden. Add each guild you want gone.
+- **Guilds.** Every line from a member of a guild on your list is hidden. Add each guild you want gone,
+  or tick **Block Olympus guilds** to cover every guild with "Olympus" in its name at once.
 - **Group warnings.** You get a private warning (raid-warning text, a sound and a red chat line)
   when someone on your player or guild list:
   - invites you to a group. You can have those invites declined for you automatically.
@@ -95,6 +96,7 @@ words from the window reports how many, not which.
 /rb exempt add [name]        let a player through despite your player and guild lists
 /rb exempt remove <name>
 /rb exempt list
+/rb olympus on | off         also block every guild with "Olympus" in its name (off by default)
 /rb scan [guild]             /who your filtered guilds so their online members are learned
 /rb check                    check your current group now
 /rb alerts on | off          group and invite warnings (on by default)
