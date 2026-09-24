@@ -731,6 +731,20 @@ do
 end
 
 ---------------------------------------------------------------------------
+-- Window text that must fit one line
+---------------------------------------------------------------------------
+do
+    local env = boot()
+    env.slash("")
+    local ui = env.ns.ui
+    for i, tab in ipairs(ui.tabs) do
+        tab:Click()
+        local hint = ui.hint:GetText() or ""
+        check(#hint <= 66, ("tab %d hint fits one line (%d chars): %s"):format(i, #hint, hint))
+    end
+end
+
+---------------------------------------------------------------------------
 -- Release checks
 ---------------------------------------------------------------------------
 do

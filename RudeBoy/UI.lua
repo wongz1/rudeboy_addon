@@ -27,15 +27,15 @@ local MASK = "********"
 
 local TABS = {
     { key = "words", label = "Words", noun = "word", add = "AddWord", remove = "RemoveWord", masked = true,
-      hint = "Add a word or phrase (separate several with commas, * is a wildcard):" },
+      hint = "Add words or phrases, comma separated (* is a wildcard):" },
     { key = "players", label = "Players", noun = "player", add = "AddPlayer", remove = "RemovePlayer",
       hint = "Add a player by name, or target them and press Add target:" },
     { key = "guilds", label = "Guilds", noun = "guild", add = "AddGuild", remove = "RemoveGuild",
-      hint = "Add a guild by name, or target a member and press Add target. Olympus guilds: every guild with that word in its name." },
+      hint = "Add a guild by name, or target a member and press Add target:" },
     { key = "blocked", label = "Blocked", noun = "blocked player",
-      hint = "Everyone Rude Boy blocks, and why. Exempt lets a person through even though their guild is on your list." },
+      hint = "Everyone blocked, and why. Exempt lets a person through anyway." },
     { key = "log", label = "Hidden", noun = "line", masked = true,
-      hint = "The last lines Rude Boy hid, newest first. Messages stay masked until you press Show." },
+      hint = "Recently hidden lines, newest first. Masked until you press Show." },
 }
 
 local ABOUT = table.concat({
@@ -416,6 +416,7 @@ local function build()
     ui.hint:SetPoint("TOPLEFT", 26, -82)
     ui.hint:SetWidth(380)
     ui.hint:SetJustifyH("LEFT")
+    if ui.hint.SetWordWrap then ui.hint:SetWordWrap(false) end   -- one line; the input box sits right under it
 
     local input = CreateFrame("EditBox", "RudeBoyInput", f, "InputBoxTemplate")
     ui.input = input
