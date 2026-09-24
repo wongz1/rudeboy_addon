@@ -3,9 +3,11 @@
 
     One /who shows at most 50 people, so a search that comes back full is split up:
         whole guild  ->  one search per class  ->  that class by level range
-    and the smaller searches are queued. Each /rb scan sends the next search in the queue
-    (the game only lets an addon send /who from a key press or click, so it can't run on
-    its own). With no guild name, /rb scan works through every guild on your list.
+    and the smaller searches are queued. The game only lets an addon send /who from inside a
+    key press or mouse click, so the queue can't run on a timer; instead, while searches are
+    queued, the next one is sent from whatever key press or click you make anyway, about six
+    seconds apart, until the queue is empty. /rb scan (or the Scan button, or adding a guild)
+    starts it. With no guild name it covers every keyword and guild on your list.
 
     Scan reminder: when a scan finishes its time is saved. At login, and every minute while
     you play, a chat reminder is printed if that is older than your reminder setting (30
@@ -24,6 +26,7 @@ local LEVELS = { "1-29", "30-49", "50-59", "60-100" }
 local queue = {}          -- searches still to send: { guild = , class = , level = }
 local inflight            -- { search = , sentAt = } waiting for its answer
 local lastSent = -GAP     -- GetTime() of the last /who sent
+local setListening        -- defined below: whether key presses are watched for sending the queue
 
 function ns.WhoQuery(s)
     local q = ('g-"%s"'):format(s.guild)
@@ -84,11 +87,48 @@ function ns.ScanThrottled()
     table.insert(queue, 1, inflight.search)
     inflight = nil
     lastSent = GetTime()   -- the refusal restarts the server's timer
-    P(("the server allows one /who every few seconds. Run /rb scan again in %d seconds (%d to go)."):format(GAP, #queue))
+    setListening(true)
+    P(("the server allows one /who every few seconds; %d to go, sent as you play."):format(#queue))
 end
 
 local function remaining()
-    return #queue == 0 and "Scan finished." or ("%d more to go, run /rb scan again."):format(#queue)
+    return #queue == 0 and "Scan finished." or ("%d more to go, sent as you play."):format(#queue)
+end
+
+---------------------------------------------------------------------------
+-- Sending the queue from your own key presses and clicks
+---------------------------------------------------------------------------
+
+local hardware   -- frame that sees key presses while searches are queued (keys pass through)
+
+setListening = function(on)
+    if hardware and hardware.propagates then pcall(hardware.EnableKeyboard, hardware, on) end
+end
+
+-- Called from a key press or click: sends the next queued search if the server's gap allows.
+-- Never prints, since it runs on ordinary input.
+local function pump()
+    if #queue == 0 or not ns.db then setListening(false) return end
+    if inflight then
+        if GetTime() - inflight.sentAt < TIMEOUT then return end
+        table.insert(queue, 1, inflight.search)   -- no answer came, send it again
+        inflight = nil
+    end
+    if GetTime() - lastSent < GAP then return end
+    local s = table.remove(queue, 1)
+    send(s)
+    if #queue == 0 then setListening(false) end
+end
+ns.PumpScan = pump
+
+local function createHardwareFrame()
+    hardware = CreateFrame("Frame", "RudeBoyHardwareFrame", UIParent)
+    hardware:EnableKeyboard(false)
+    -- Only take keyboard input if the keys are certain to pass through to the game.
+    local ok = pcall(hardware.SetPropagateKeyboardInput, hardware, true)
+    hardware.propagates = ok and (not hardware.GetPropagateKeyboardInput or hardware:GetPropagateKeyboardInput()) and true or false
+    hardware:SetScript("OnKeyDown", pump)
+    if WorldFrame and WorldFrame.HookScript then WorldFrame:HookScript("OnMouseDown", pump) end
 end
 
 -- Called with the size of each /who answer. `total` is how many matched, which can be more
@@ -110,6 +150,9 @@ function ns.ScanResults(num, total)
     if #queue == 0 then
         ns.db.lastScan = time()
         ns.Changed()
+        setListening(false)
+    else
+        setListening(true)   -- split searches were queued
     end
 end
 
@@ -129,16 +172,13 @@ local function sortedGuilds()
 end
 
 function ns.Scan(guild)
-    local wait = GAP - (GetTime() - lastSent)
-    if wait > 0 and not inflight then
-        P(("the server allows one /who every few seconds; try again in %d second%s."):format(math.ceil(wait), math.ceil(wait) == 1 and "" or "s"))
-        return
-    end
-    if inflight then
-        if GetTime() - inflight.sentAt < TIMEOUT then
-            P("still waiting for the last /who answer, try again in a moment.")
-            return
-        end
+    if not hardware then createHardwareFrame() end
+    local busy
+    if inflight and GetTime() - inflight.sentAt < TIMEOUT then
+        busy = "still waiting for the last /who answer"
+    elseif GetTime() - lastSent < GAP then
+        busy = "the server allows one /who every few seconds"
+    elseif inflight then
         table.insert(queue, 1, inflight.search)   -- no answer came, send it again
         inflight = nil
     end
@@ -156,13 +196,21 @@ function ns.Scan(guild)
     elseif #queue == 0 then
         for _, g in ipairs(sortedGuilds()) do queue[#queue + 1] = { guild = g } end
         if #queue == 0 then
-            P("no guilds on your list to look up (wildcard entries can't be).")
+            P("no guilds or keywords on your list to look up (wildcard entries can't be).")
             return
         end
     end
 
+    setListening(true)
+    if busy then
+        P(("%s; %d queued, sent as you play."):format(busy, #queue))
+        return
+    end
     local s = table.remove(queue, 1)
-    if send(s) then P(("looking up %s..."):format(describe(s))) end
+    if send(s) then
+        P(("looking up %s...%s"):format(describe(s), #queue > 0 and (" %d more will follow as you play."):format(#queue) or ""))
+    end
+    if #queue == 0 then setListening(false) end
 end
 
 ---------------------------------------------------------------------------

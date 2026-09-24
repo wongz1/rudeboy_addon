@@ -21,7 +21,7 @@
     /rb keyword list
     /rb olympus on | off         the same for "Olympus"
     /rb scan [guild]             /who your filtered guilds so their online members are learned;
-                                 run it again for each next search (big guilds are split up)
+                                 big guilds are split into several searches, sent as you play
     /rb check                    check your current group now
     /rb alerts on | off          group and invite warnings
     /rb decline party on | off   decline party invites from filtered people (also: /rb autodecline)
@@ -45,7 +45,7 @@ local HELP = {
     "/rb exempt add <name> | remove <name> | list - let someone through despite the lists",
     "/rb keyword add <word> | remove <word> | list - block every guild containing the word",
     "/rb olympus on | off - the same for Olympus",
-    "/rb scan [guild] - /who your guilds to learn who is in them (run again for each next search)",
+    "/rb scan [guild] - /who your guilds and keywords to learn who is in them",
     "/rb check - check your group now",
     "/rb alerts on | off,  /rb decline party on | off,  /rb decline guild on | off",
     "/rb reminder <minutes, 30 to 720>",

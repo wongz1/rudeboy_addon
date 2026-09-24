@@ -144,12 +144,12 @@ guild member it has already seen. It learns guilds from:
 - your party and raid members
 - `/who` results, which is what `/rb scan` uses.
 
-After adding guilds, run `/rb scan`. One `/who` shows at most 50 people, so a search that comes
-back full is split into one search per class, and a class that is still full is split by level
-range. The game only lets an addon run `/who` when you press a key or click, so each `/rb scan` sends
-one search. Run it again until it says "Scan finished". A macro on a key makes this one key press
-per search. With no guild name it works through every guild on your list; `/rb scan <guild>` does
-just that guild. Online members are hidden from then on. What the addon learns is saved and remembered for 30 days after it
+Adding a guild or keyword looks it up at once. `/rb scan` (or the Scan button) looks up everything
+on your list. One `/who` shows at most 50 people, so a search that comes back full is split into
+one search per class, and a class that is still full is split by level range. The game only lets an
+addon send `/who` from inside a key press or mouse click, so the queued searches go out from
+whatever keys and clicks you make while playing, about six seconds apart, until it says
+"Scan finished". `/rb scan <guild>` does just that guild. Online members are hidden from then on. What the addon learns is saved and remembered for 30 days after it
 last saw each player. A `/who` that shows someone has left the guild clears them.
 
 **Scan reminder.** Each finished scan is timed. At login, and while you play, Rude Boy prints

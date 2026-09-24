@@ -6,6 +6,10 @@
   Crank`) to block every guild with that word in its name; one `/who` per keyword looks their
   members up. The **Olympus** box is a shortcut for that keyword (`/rb olympus on|off`).
 - The Blocked tab starts its list higher and shows 12 rows.
+- Scans no longer need a press per search: queued `/who` searches go out from your own key
+  presses and clicks as you play, about six seconds apart (the server's limit), and the server's
+  "wait a moment" message re-queues the dropped search.
+- A guild added mid-scan goes to the front of the queue instead of replacing it.
 - A "Blocked by Rude Boy (reason)" line in the tooltip of blocked players, and an "exempt" line
   for exempt ones. Hovering also records the player's guild.
 

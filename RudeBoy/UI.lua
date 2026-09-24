@@ -52,8 +52,9 @@ local ABOUT = table.concat({
         .. "guild since, get through until they are seen.",
     "",
     "|cffffd100Scan regularly|r",
-    "Press Scan on the Guilds tab (or type /rb scan). Each press sends one /who search. Big guilds "
-        .. "are split by class and level, so keep pressing until it says Scan finished. /who only finds "
+    "Adding a guild or keyword looks it up at once; Scan on the Guilds tab (or /rb scan) looks up "
+        .. "everything on your list. Big guilds take several /who searches, which go out from your own "
+        .. "key presses and clicks as you play, until it says Scan finished. /who only finds "
         .. "players who are online, so scanning at different times of day catches more members. The scan "
         .. "reminder below tells you when your lists are getting old.",
     "",

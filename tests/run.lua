@@ -60,6 +60,8 @@ local function boot(opts)
     function methods:GetText() return self.text end
     function methods:SetChecked(v) self.checked = v and true or false end
     function methods:GetChecked() return self.checked end
+    function methods:EnableKeyboard(on) self.keyboard = on and true or false end
+    function methods:GetPropagateKeyboardInput() return true end
     function methods:Enable() self.enabled = true end
     function methods:Disable() self.enabled = false end
     function methods:IsEnabled() return self.enabled end
@@ -82,6 +84,7 @@ local function boot(opts)
     _G.GameTooltip.AddLine = function(self, text, r, g, b) self.lines[#self.lines + 1] = { text = text, r = r, g = g, b = b } end
     _G.GameTooltip.HasScript = function() return true end
     _G.UIParent = mockFrame()
+    _G.WorldFrame = mockFrame()
     _G.CreateFrame = function(_, name)
         local f = mockFrame(name)
         env.frames[#env.frames + 1] = f
@@ -281,6 +284,37 @@ do
     check(env.whoQuery == 'g-"Big Guild"', "scan with no name starts with the whole guild")
     env.whoAnswer(12, "Big Guild")
     check(env.lastPrint():find("12 found") and env.lastPrint():find("Scan finished"), "a small guild takes one search")
+
+    -- queued searches go out from ordinary key presses and clicks, six seconds apart
+    env.slash("scan")
+    env.whoAnswer(83, "Big Guild")
+    check(env.lastPrint():find("8 searches") and env.lastPrint():find("sent as you play"), "a full answer queues the class searches")
+    local hw = _G.RudeBoyHardwareFrame
+    check(hw and hw.keyboard == true, "the addon listens for key presses while searches are queued")
+    env.whoQuery = nil
+    hw.scripts.OnKeyDown(hw, "W")
+    check(env.whoQuery == 'g-"Big Guild" c-"Warrior"', "a key press sends the next search")
+    env.whoAnswer(10, "Big Guild")
+    env.whoQuery = nil
+    hw.scripts.OnKeyDown(hw, "W")
+    check(env.whoQuery == 'g-"Big Guild" c-"Hunter"', "the answer plus the gap lets the next one go")
+    env.whoQuery = nil
+    hw.scripts.OnKeyDown(hw, "W")
+    check(env.whoQuery == nil, "not while an answer is pending")
+    env.whoAnswer(10, "Big Guild")
+    env.now = env.now - 7   -- undo the answer's time jump: right after the answer is still inside the gap
+    _G.WorldFrame.scripts.OnMouseDown(_G.WorldFrame, "LeftButton")
+    check(env.whoQuery == nil, "not inside the six-second gap")
+    env.now = env.now + 7
+    _G.WorldFrame.scripts.OnMouseDown(_G.WorldFrame, "LeftButton")
+    check(env.whoQuery == 'g-"Big Guild" c-"Rogue"', "a mouse click sends one too")
+    for _ = 1, 10 do
+        env.whoAnswer(10, "Big Guild")
+        hw.scripts.OnKeyDown(hw, "W")
+    end
+    check(env.lastPrint():find("Scan finished") and hw.keyboard == false, "the queue empties by itself and listening stops")
+    env.slash("scan")
+    env.whoAnswer(12, "Big Guild")
     check(env.ns.GuildOf("Member 1" .. 'g-"Big Guild"') == "Big Guild", "members learned")
 
     env.slash("scan")
@@ -324,9 +358,9 @@ do
     multi.slash("scan")
     check(multi.lastPrint():find("still waiting"), "won't send over an unanswered search")
     multi.fire("CHAT_MSG_SYSTEM", "You must wait a moment before using /who again.")
-    check(multi.lastPrint():find("Run /rb scan again in 6 seconds"), "the server's wait message puts the search back and says so")
+    check(multi.lastPrint():find("to go, sent as you play"), "the server's wait message puts the search back and says so")
     multi.ns.Scan("")   -- straight away, no time passing
-    check(multi.lastPrint():find("try again in %d second"), "and a scan inside the gap is refused with the time left")
+    check(multi.lastPrint():find("every few seconds; %d queued"), "and a scan inside the gap just keeps the queue")
     multi.now = multi.now + 7
     multi.slash("scan")
     check(multi.whoQuery == 'g-"Alpha"', "after the gap the dropped search goes out again")
@@ -584,6 +618,8 @@ do
     check(not env.lastPrint():find("guild lists"), "no reminder with no guilds on the list")
 
     env.slash("guild add Big Guild")
+    env.whoAnswer(3, "Big Guild")   -- adding looked it up; answer so that scan is finished
+    env.ns.db.lastScan = nil
     check(env.ns.db.reminderMinutes == 720, "reminder defaults to 12 hours")
     tick(61)
     check(env.lastPrint() :find("haven't been scanned yet"), "reminds when never scanned")
