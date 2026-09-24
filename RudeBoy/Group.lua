@@ -140,7 +140,9 @@ local function declineGuildInvite()
     local fn = DeclineGuild or (C_GuildInfo and C_GuildInfo.DeclineGuild)
     if not fn then return false end
     local ok = pcall(fn)
+    -- older clients show the invite as a pop-up, newer ones (WoW Forever included) as GuildInviteFrame
     if StaticPopup_Hide then pcall(StaticPopup_Hide, "GUILD_INVITE") end
+    if GuildInviteFrame and GuildInviteFrame.Hide then pcall(GuildInviteFrame.Hide, GuildInviteFrame) end
     return ok
 end
 

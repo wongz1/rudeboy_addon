@@ -356,8 +356,10 @@ do
     check(#env.alerts == 4 and not env.guildDeclined, "other guild invites are left alone, nothing declined yet")
     env.slash("decline guild on")
     check(env.ns.db.declineGuild == true, "/rb decline guild on")
+    _G.GuildInviteFrame = { Hide = function(self) self.hidden = true end }
     env.fire("GUILD_INVITE_REQUEST", "Nice Person", "Streamer Army")
     check(env.guildDeclined == 1 and env.alerts[5]:find("Declined a guild invite"), "guild invite from a blocked guild declined")
+    check(_G.GuildInviteFrame.hidden, "the guild invite frame is closed too")
     env.fire("GUILD_INVITE_REQUEST", "Nice Person", "Nice Guild")
     check(env.guildDeclined == 1, "guild invites from others still not declined")
     env.fire("GUILD_INVITE_REQUEST", "Nice Person", 123, "Streamer Army")
