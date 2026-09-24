@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.3
+
+- Release automation: the CurseForge upload now works from GitHub. No changes to the addon itself.
+
 ## 0.1.2
 
 - Hovering a row on the Blocked tab shows the full name and guild.

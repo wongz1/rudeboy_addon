@@ -25,7 +25,7 @@
 ]]
 
 local ADDON, ns = ...
-ns.VERSION = "0.1.2"
+ns.VERSION = "0.1.3"
 
 -- True when Saved.lua (see the .toc) has already put the last save in place. The client's own
 -- loading, when it works, happens later, at ADDON_LOADED.
