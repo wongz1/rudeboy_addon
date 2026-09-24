@@ -56,6 +56,11 @@ gh auth refresh -h github.com -s workflow
 2. Add its project ID to `RudeBoy/RudeBoy.toc`: `## X-Curse-Project-ID: 123456`
 3. Create an API token at https://authors.curseforge.com/account/api-tokens and save it as the
    repository secret `CF_API_KEY` (GitHub: Settings > Secrets and variables > Actions).
+   The upload is done by `tools/cf_upload.py`, which trims the token: a secret pasted with a
+   trailing newline made the packager's own upload fail with "Missing field metadata".
+4. If the CurseForge step of a release fails, re-run just the upload for that tag from the
+   Actions tab: workflow "CurseForge upload", input the tag (or `gh workflow run cf-upload.yml
+   -f tag=v0.1.3`).
 
 ### Wago Addons
 
