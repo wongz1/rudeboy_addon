@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.1
+
+- Guild invites: the guild name is found wherever the client puts it in the event, declining
+  falls back to `C_GuildInfo.DeclineGuild`, and the warning says when the client offers no way to
+  decline. `/rb debug` shows the last guild invite's raw values.
+- `LinkSavedSettings.cmd` for Windows, next to the macOS/Linux script, both inside the addon folder.
+- Adding a guild looks its online members up with `/who` at once.
+- Release packaging fix so the changelog reaches CurseForge.
+
 ## 0.1.0
 
 First release, for WoW Forever.
