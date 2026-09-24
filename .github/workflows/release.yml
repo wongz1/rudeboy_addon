@@ -18,9 +18,10 @@ jobs:
       HAS_CF_KEY: ${{ secrets.CF_API_KEY != '' }}
       WAGO_API_TOKEN: ${{ secrets.WAGO_API_TOKEN }}
       WOWI_API_TOKEN: ${{ secrets.WOWI_API_TOKEN }}
-      # CF_API_KEY is given only to the upload step below, not to the packager: the packager's
-      # own CurseForge upload fails on this project ("Missing field metadata") for reasons its
-      # log doesn't show, so the upload is done here with the same API and a visible payload.
+      # CF_API_KEY is given only to the upload step below, not to the packager. On this runner
+      # the packager's CurseForge upload (curl -F "metadata=<-") arrives with an empty metadata
+      # part ("Missing field metadata"); the same request from a Mac works. The upload is done
+      # here with the metadata passed as a plain string, and the request shown in the log.
     steps:
       - uses: actions/checkout@v4
         with:
@@ -71,7 +72,7 @@ jobs:
           echo "metadata:"; cat meta.json
 
           code=$(curl -sS -w "%{http_code}" -o result.json -H "x-api-token: $CF_API_KEY" \
-            -F "metadata=<meta.json" -F "file=@$zip" \
+            --form-string "metadata=$(cat meta.json)" -F "file=@$zip" \
             "https://wow.curseforge.com/api/projects/$CF_PROJECT_ID/upload-file")
           echo "response $code:"; cat result.json; echo
           [ "$code" = "200" ]
