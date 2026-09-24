@@ -2,7 +2,7 @@
 ## Title: Rude Boy
 ## Notes: Hides chat lines that contain your filtered words, or that come from players and guilds you filter, and warns you when one of them is in your group.
 ## Author: Zack
-## Version: 0.1.3
+## Version: 0.1.4
 ## SavedVariables: RudeBoyDB
 ## IconTexture: Interface\Icons\Spell_Holy_Silence
 ## Category: Chat

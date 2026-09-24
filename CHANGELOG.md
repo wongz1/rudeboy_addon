@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.4
 
 - Guild keywords: type a word on the Guilds tab and press **Add keyword** (or `/rb keyword add
   Crank`) to block every guild with that word in its name; one `/who` per keyword looks their
