@@ -421,7 +421,7 @@ end
 do
     local env = boot()
     env.slash("status")
-    check(env.prints[1]:find("v0%.1%.0"), "/rb status prints the version")
+    check(env.prints[1]:find("v" .. env.ns.VERSION:gsub("%.", "%%."), 1) ~= nil, "/rb status prints the version")
 
     env.slash("player add")
     check(env.lastPrint():find("usage"), "player add with no target explains itself")
