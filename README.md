@@ -30,13 +30,17 @@ The beta client writes addon settings to `WTF/Account/<account>/SavedVariables/R
 logout, `/reload` and `/exit`, but never reads them back, for every addon. Rude Boy prints
 "no saved settings found" at login when this happens. Until Blizzard fixes it:
 
-- **macOS / Linux:** with the game closed, run `tools/link-saved-settings.sh` once (pass the game
-  folder if it isn't `/Applications/World of Warcraft/_classic_beta_`). It links the save file into
-  the addon as `RudeBoy/Saved.lua`, which the client does load. The login line then says
-  "settings restored from the linked save file".
-- **Windows:** use [ForeverSVFix](https://github.com/nobewayo/ForeverSVFix) or
-  [SVShim](https://github.com/kylef000/wow-forever-svshim), which do this for every addon, or make
-  the link by hand: `mklink "Interface\AddOns\RudeBoy\Saved.lua" "WTF\Account\<account>\SavedVariables\RudeBoy.lua"`.
+Do this once, with the game closed, after playing once with the addon enabled (so a save exists):
+
+- **Windows:** in `Interface\AddOns\RudeBoy`, right-click `LinkSavedSettings.cmd` and choose
+  **Run as administrator** (Windows only lets file links be made that way, or with Developer Mode
+  on). It links your save file into the addon as `Saved.lua`, which the client does load.
+- **macOS / Linux:** in a terminal, run `sh "<game folder>/_classic_beta_/Interface/AddOns/RudeBoy/link-saved-settings.sh"`.
+
+The login line then says "settings restored from the linked save file". If you use
+[ForeverSVFix](https://github.com/nobewayo/ForeverSVFix) or
+[SVShim](https://github.com/kylef000/wow-forever-svshim), which do this for every addon, you don't
+need Rude Boy's own scripts.
 
 Once the client loads settings again, the real ones load after `Saved.lua` and take over; the link
 can stay or go.

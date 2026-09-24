@@ -182,7 +182,7 @@ local function announce()
             count(db.words), count(db.players), count(db.guilds), count(db.known), db.savedAt or "unknown"))
     else
         ns.Print(("v%s: no saved settings found, starting fresh. /rb opens the window."):format(ns.VERSION))
-        ns.Print("The WoW Forever beta doesn't load addon settings itself. See the README for the one-time fix (tools/link-saved-settings.sh).")
+        ns.Print("The WoW Forever beta doesn't load addon settings itself. One-time fix: run LinkSavedSettings.cmd (Windows) or link-saved-settings.sh (Mac) from the RudeBoy addon folder, see the README.")
     end
 end
 

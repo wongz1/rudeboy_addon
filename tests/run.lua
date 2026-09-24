@@ -803,7 +803,7 @@ do
     local again = boot({ db = fresh.ns.db })
     check(again.prints[1]:find("settings restored") and again.prints[1]:find("last saved 12:00"), "login says settings were found and when saved")
     check(again.ns.restoredFromLink and again.prints[1]:find("restored from the linked save file"), "a table present before the addon's files run counts as restored by Saved.lua")
-    check(fresh.prints[2]:find("tools/link%-saved%-settings%.sh"), "a fresh start points at the fix")
+    check(fresh.prints[2]:find("LinkSavedSettings%.cmd"), "a fresh start points at the fix")
 end
 
 realPrint(("%d passed, %d failed"):format(passed, failed))
