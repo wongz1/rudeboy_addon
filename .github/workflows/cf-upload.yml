@@ -1,0 +1,60 @@
+# Uploads an existing GitHub release's zip to CurseForge on demand, for when the upload in
+# the Release workflow failed. Run it from the Actions tab (or `gh workflow run cf-upload.yml
+# -f tag=v0.1.3`). It also posts the same form to an echo service first, to show what the
+# runner actually sends, and forces HTTP/1.1 for the CurseForge request.
+name: CurseForge upload
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag whose zip to upload, e.g. v0.1.3"
+        required: true
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      CF_API_KEY: ${{ secrets.CF_API_KEY }}
+      CF_PROJECT_ID: "1709294"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+
+      - name: Fetch the release zip
+        run: |
+          gh release download "${{ inputs.tag }}" --pattern '*.zip' --dir dist
+          ls -l dist
+
+      - name: Build the metadata
+        run: |
+          version=$(sed -n 's/^## Version: *//p' RudeBoy/RudeBoy.toc | tr -d '\r')
+          versions=$(curl -sS -H "x-api-token: $CF_API_KEY" https://wow.curseforge.com/api/game/versions)
+          ids=$(echo "$versions" | jq -c '[.[] | select(.gameVersionTypeID == 88568 and .name == "1.60.1") | .id]')
+          echo "version $version, game version ids $ids"
+          [ "$ids" != "[]" ] || { echo "no WoW Forever 1.60.1 entry on CurseForge"; exit 1; }
+          changelog=$(awk '/^## /{n++} n==1' CHANGELOG.md)
+          jq -n --arg name "v$version" --argjson ids "$ids" --arg cl "$changelog" \
+            '{displayName: $name, gameVersions: $ids, releaseType: "beta", changelog: $cl, changelogType: "markdown"}' > meta.json
+          cat meta.json
+          curl --version | head -1
+
+      - name: What the runner sends (echo test)
+        run: |
+          zip=$(ls dist/*.zip | head -1)
+          for proto in --http2 --http1.1; do
+            echo "== $proto"
+            curl -sS $proto --form-string "metadata=$(cat meta.json)" -F "file=@$zip" https://httpbin.org/post \
+              | jq -c '{http: .headers["Content-Type"], form_fields: (.form | keys), files: (.files | keys)}'
+          done
+
+      - name: Upload to CurseForge over HTTP/1.1
+        run: |
+          zip=$(ls dist/*.zip | head -1)
+          code=$(curl -sS --http1.1 -w "%{http_code}" -o result.json -H "x-api-token: $CF_API_KEY" \
+            --form-string "metadata=$(cat meta.json)" -F "file=@$zip" \
+            "https://wow.curseforge.com/api/projects/$CF_PROJECT_ID/upload-file")
+          echo "response $code:"; cat result.json; echo
+          [ "$code" = "200" ]
