@@ -305,10 +305,20 @@ local function removeRow(row)
     end
 end
 
--- Hovering a shown Hidden tab line gives the whole message.
+-- Hovering a Blocked tab row shows the whole name and reason; a shown Hidden tab line gives
+-- the whole message.
 local function rowEnter(row)
+    if not GameTooltip then return end
+    local b = row.entry and row.entry.action and row.entry
+    if b then
+        GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
+        GameTooltip:SetText(b.text, 1, 0.82, 0)
+        GameTooltip:AddLine(b.source, 1, 1, 1, true)
+        GameTooltip:Show()
+        return
+    end
     local e = row.entry and row.entry.log
-    if not (e and revealed and GameTooltip) then return end
+    if not (e and revealed) then return end
     GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
     GameTooltip:SetText(("%s  [%s]  %s"):format(e.at or "", tostring(e.where), tostring(e.author)), 1, 0.82, 0)
     GameTooltip:AddLine(tostring(e.msg), 1, 1, 1, true)
