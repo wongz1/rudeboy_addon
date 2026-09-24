@@ -230,6 +230,7 @@ function ns.RefreshUI()
     ui.checks.alerts:SetChecked(ns.db.alerts)
     ui.checks.autoDecline:SetChecked(ns.db.autoDecline)
     ui.checks.declineGuild:SetChecked(ns.db.declineGuild)
+    ui.checks.bubbles:SetChecked(ns.db.bubbles)
     local by = ns.db.hiddenByKind
     ui.lifetime:SetText(("%s line%s filtered"):format(commas(ns.db.hiddenTotal), ns.db.hiddenTotal == 1 and "" or "s"))
     ui.hidden:SetText(("Lines hidden: |cffffd100%s lifetime|r since %s, %s this session\n%s by word, %s by player, %s by guild"):format(
@@ -397,7 +398,7 @@ local function build()
     ui.frame = f
     -- height: list ends at 400, three rows of checkboxes to 510, reminder row to 540,
     -- then the two-line lifetime text above the bottom edge
-    f:SetSize(430, 590)
+    f:SetSize(430, 616)
     f:SetPoint("CENTER")
     f:SetFrameStrata("DIALOG")
     f:SetClampedToScreen(true)
@@ -554,13 +555,17 @@ local function build()
         alerts = checkbox(f, "Warn about blocked people", "alerts", 212, checksY),
         autoDecline = checkbox(f, "Decline party invites", "autoDecline", 22, checksY - 26),
         declineGuild = checkbox(f, "Decline guild invites", "declineGuild", 212, checksY - 26),
+        bubbles = checkbox(f, "Hide their chat bubbles", "bubbles", 22, checksY - 52),
     }
+    ui.checks.bubbles:HookScript("OnClick", function(self)
+        if not self:GetChecked() and ns.ShowAllBubbles then ns.ShowAllBubbles() end
+    end)
     local note = fontString(f, "GameFontDisableSmall")
-    note:SetPoint("TOPLEFT", 26, checksY - 54)
+    note:SetPoint("TOPLEFT", 26, checksY - 80)
     note:SetWidth(380)
     note:SetJustifyH("LEFT")
-    note:SetText("Warnings cover groups and invites. Invites are only declined when they come from blocked people or guilds.")
-    local reminderY = checksY - 80
+    note:SetText("Warnings cover groups and invites; invites are only declined from blocked people or guilds. Bubbles can't be hidden in dungeons and raids.")
+    local reminderY = checksY - 106
     ui.less = button(f, "-", 24, function() ns.SetReminder(ns.db.reminderMinutes - ns.REMINDER_STEP) end)
     ui.less:SetPoint("TOPLEFT", 24, reminderY)
     ui.more = button(f, "+", 24, function() ns.SetReminder(ns.db.reminderMinutes + ns.REMINDER_STEP) end)

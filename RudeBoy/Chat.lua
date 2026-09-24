@@ -92,6 +92,10 @@ function ns.ChatFilter(frame, event, msg, author, ...)
         -- An error here would break chat, so fail open: show the line.
         local ok, r = pcall(judge, event, msg, author, guid, where)
         reason = ok and r or false
+        -- the first time a say/yell/party line is seen, deal with its speech bubble
+        if ns.BUBBLE_EVENTS and ns.BUBBLE_EVENTS[event] and ns.WatchBubbles then
+            pcall(ns.WatchBubbles, (reason and not ns.db.preview) and msg or nil)
+        end
         if type(lineID) == "number" then
             decided[lineID] = reason
             decidedOrder[#decidedOrder + 1] = lineID

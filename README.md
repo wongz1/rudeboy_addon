@@ -8,6 +8,8 @@ It never sends anything to chat, and nobody else can tell you are using it.
 - **Guilds.** Every line from a member of a guild on your list is hidden. Add each guild you want gone,
   or add a **keyword** ("Crank") to block every guild with that word in its name at once. The
   **Olympus** box on the Guilds tab is a shortcut for that keyword.
+- **Chat bubbles.** Blocked players' speech bubbles are hidden too, in the open world (the game
+  keeps bubbles away from addons in dungeons and raids).
 - **Tooltips.** Hovering a blocked player shows "Blocked by Rude Boy" and why; an exempt player
   shows that too.
 - **Group warnings.** You get a private warning (raid-warning text, a sound and a red chat line)
@@ -60,7 +62,8 @@ of a guild on your guild list (otherwise you can't see who the guild filter is c
 **Exempt** on a row to let that person through anyway, for someone you get on with in a guild you
 block. Exempt people stay at the top of the tab with an **Unexempt** button. Words still apply to
 what they say. Checkboxes at
-the bottom turn chat hiding, warnings, and declining of party and guild invites on and off, and `-` / `+` set
+the bottom turn chat hiding, warnings, declining of party and guild invites, and bubble hiding on
+and off, and `-` / `+` set
 the scan reminder. **About** explains what the addon does and why guild lists need regular scans.
 
 The Words tab never shows your words on its own: every entry reads `********` until you press
@@ -110,6 +113,7 @@ words from the window reports how many, not which.
 /rb decline guild on | off   decline guild invites from filtered people or filtered guilds (off by default)
 /rb reminder <minutes>       how old a scan gets before you're reminded (30 to 720, default 720)
 /rb log [clear]              the last 20 hidden lines in chat, with their text (or clear the list)
+/rb bubbles on | off         hide blocked players' chat bubbles in the open world (on by default)
 /rb preview on | off         leave would-be-hidden lines in chat with a grey tag, for testing
 /rb test <text>              would this line be hidden by your word list?
 /rb debug                    how the game writes names: yours, your target's, recent senders

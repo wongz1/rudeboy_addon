@@ -17,6 +17,7 @@
         reminderMinutes  remind to scan when lastScan is older than this (30 to 720)
         log          the last 100 hidden lines, oldest first (the window's Hidden tab)
         preview      show would-be-hidden lines with a tag instead of hiding them
+        bubbles      hide blocked players' speech bubbles in the open world
         keywords     { [normalized word] = "Shown Word" }   block every guild whose name contains it
         recentAuthors  the last few chat senders as the game wrote them (/rb debug)
 
@@ -26,7 +27,7 @@
 ]]
 
 local ADDON, ns = ...
-ns.VERSION = "0.1.4"
+ns.VERSION = "0.1.5"
 
 -- True when Saved.lua (see the .toc) has already put the last save in place. The client's own
 -- loading, when it works, happens later, at ADDON_LOADED.
@@ -383,6 +384,7 @@ function ns.LoadDB()
     db.log = db.log or {}
     db.exempt = db.exempt or {}
     if db.preview == nil then db.preview = false end
+    if db.bubbles == nil then db.bubbles = true end
     db.keywords = db.keywords or {}
     if db.olympus then db.keywords[ns.NormalizeGuild(ns.OLYMPUS)] = ns.OLYMPUS end   -- older setting
     db.olympus = nil

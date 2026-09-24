@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.5
+
+- Blocked players' speech bubbles are hidden in the open world (checkbox at the bottom of the
+  window, or `/rb bubbles on|off`; on by default). Dungeons and raids don't allow it.
+
 ## 0.1.4
 
 - Guild keywords: type a word on the Guilds tab and press **Add keyword** (or `/rb keyword add

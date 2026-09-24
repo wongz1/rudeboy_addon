@@ -1013,5 +1013,68 @@ do
     check(hover("mouseover") == nil and hover(nil) == nil, "nothing without a unit")
 end
 
+---------------------------------------------------------------------------
+-- Chat bubbles
+---------------------------------------------------------------------------
+do
+    local env = boot()
+    -- two bubbles on screen, each a frame with a child holding a String
+    local function bubble(text)
+        local holder = mockFrame and nil
+        local h = { String = { GetText = function() return text end }, alpha = 1 }
+        h.SetAlpha = function(self, a) self.alpha = a end
+        return { GetChildren = function() return h end, holder = h }
+    end
+    local b1, b2 = bubble("what a badword thing"), bubble("hello there")
+    _G.C_ChatBubbles = { GetAllChatBubbles = function() return { b1, b2 } end }
+    local w = env.ns.bubbleWatcher
+    local function tick() w.scripts.OnUpdate(w, 0.1) end
+
+    env.slash("word add badword")
+    check(env.ns.db.bubbles == true, "bubble hiding is on by default")
+    env.filterRaw("CHAT_MSG_SAY", "what a badword thing", "Loud Mouth", 9001)
+    check(w:IsShown(), "a hidden say line starts the bubble watch")
+    tick()
+    check(b1.holder.alpha == 0 and b2.holder.alpha == 1, "the bubble with the hidden text is made invisible, the other left alone")
+    env.now = env.now + 2
+    tick()
+    check(not w:IsShown(), "the watch stops after a moment")
+
+    -- the bubble frame gets reused for an ordinary line
+    b1.holder.String.GetText = function() return "a new line" end
+    env.filterRaw("CHAT_MSG_SAY", "a new line", "Some One", 9002)
+    tick()
+    check(b1.holder.alpha == 1, "a reused bubble is shown again")
+
+    env.now = env.now + 2
+    tick()
+    env.filterRaw("CHAT_MSG_CHANNEL", "badword in trade", "Loud Mouth", 9003, "Trade")
+    check(not w:IsShown(), "channel lines have no bubbles and start no watch")
+
+    env.slash("preview on")
+    env.filterRaw("CHAT_MSG_SAY", "badword shown in preview", "Loud Mouth", 9004)
+    b1.holder.String.GetText = function() return "badword shown in preview" end
+    tick()
+    check(b1.holder.alpha == 1, "in preview the bubble stays, like the line")
+    env.slash("preview off")
+
+    b1.holder.String.GetText = function() return "another badword" end
+    env.filterRaw("CHAT_MSG_YELL", "another badword", "Loud Mouth", 9005)
+    tick()
+    check(b1.holder.alpha == 0, "yells too")
+    env.slash("bubbles off")
+    check(b1.holder.alpha == 1 and env.ns.db.bubbles == false, "/rb bubbles off shows hidden bubbles again")
+    env.filterRaw("CHAT_MSG_SAY", "another badword", "Loud Mouth", 9006)
+    tick()
+    check(b1.holder.alpha == 1, "and hides none while off")
+
+    env.slash("")
+    local ui = env.ns.ui
+    check(ui.checks.bubbles and not ui.checks.bubbles:GetChecked(), "checkbox follows the setting")
+    ui.checks.bubbles:SetChecked(true)
+    ui.checks.bubbles:Click()
+    check(env.ns.db.bubbles == true, "checkbox turns it back on")
+end
+
 realPrint(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

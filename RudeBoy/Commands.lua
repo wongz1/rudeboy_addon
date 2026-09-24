@@ -28,6 +28,7 @@
     /rb decline guild on | off   decline guild invites from filtered people or filtered guilds
     /rb reminder <minutes>       remind to scan when the last scan is older (30 to 720)
     /rb log [clear]              the last 20 hidden lines, with their text (or clear the list)
+    /rb bubbles on | off         hide blocked players' chat bubbles in the open world (on by default)
     /rb preview on | off         show would-be-hidden lines with a grey tag instead, for testing
     /rb test <text>              would this line be hidden?
     /rb debug                    how the game writes names: yours, your target's, recent senders
@@ -48,7 +49,7 @@ local HELP = {
     "/rb scan [guild] - /who your guilds and keywords to learn who is in them",
     "/rb check - check your group now",
     "/rb alerts on | off,  /rb decline party on | off,  /rb decline guild on | off",
-    "/rb reminder <minutes, 30 to 720>",
+    "/rb reminder <minutes, 30 to 720>,  /rb bubbles on | off",
     "/rb log [clear] - the last hidden lines,  /rb preview on | off - tag lines instead of hiding",
     "/rb test <text> - would it be hidden?,  /rb debug - how the game writes names",
 }
@@ -306,6 +307,9 @@ SlashCmdList["RUDEBOY"] = function(input)
         printLog(action)
     elseif cmd == "preview" then
         toggle("preview", action, "preview (show would-be-hidden lines with a tag)")
+    elseif cmd == "bubbles" then
+        toggle("bubbles", action, "hiding blocked players' chat bubbles (open world only)")
+        if not ns.db.bubbles and ns.ShowAllBubbles then ns.ShowAllBubbles() end
     elseif cmd == "test" then
         local why = ns.MatchWord(rest)
         P(why and ("would be hidden (word \"%s\")."):format(why) or "would be shown.")
