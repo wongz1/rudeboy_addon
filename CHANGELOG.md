@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.2
+
+- Hovering a row on the Blocked tab shows the full name and guild.
+- Release automation: CurseForge upload done directly, with the request shown in the build log.
+
 ## 0.1.1
 
 - Guild invites: the guild name is found wherever the client puts it in the event, declining
