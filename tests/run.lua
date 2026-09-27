@@ -1160,6 +1160,24 @@ do
         "names newest first, with counts and why; a word match never names the word")
     check(panel.total:GetText():find("|cffffd1004|r  %(4 this session%)") and not panel.empty:IsShown(), "counts follow")
 
+    -- pending searches
+    local function pending() return (panel.pending:GetText():gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")) end
+    check(pending() == "Searches pending: none", "no searches pending when idle")
+    env.slash("guild add Huge Guild")
+    check(pending() == "Searches pending: 1  (sent as you play)", "the search in flight counts")
+    env.whoAnswer(90, "Huge Guild")
+    check(pending() == "Searches pending: 8  (sent as you play)", "a full answer's split searches are counted")
+    local hw = _G.RudeBoyHardwareFrame
+    hw.scripts.OnKeyDown(hw, "W")
+    check(pending() == "Searches pending: 8  (sent as you play)", "sending one moves it from queued to in flight")
+    env.whoAnswer(3, "Huge Guild")
+    check(pending() == "Searches pending: 7  (sent as you play)", "an answer takes one off")
+    for _ = 1, 7 do
+        hw.scripts.OnKeyDown(hw, "W")
+        env.whoAnswer(3, "Huge Guild")
+    end
+    check(pending() == "Searches pending: none", "back to none when the scan is finished")
+
     -- moving and locking
     panel.point = { "TOPLEFT", _G.UIParent, "TOPLEFT", 40, -200 }
     panel.scripts.OnDragStop(panel)

@@ -73,7 +73,7 @@ words from the window reports how many, not which.
 ## The on-screen panel
 
 A small panel you can park anywhere shows what Rude Boy has done: lines blocked in total and this
-session, and the eight most recently blocked players with how many of their lines were hidden and
+session, how many `/who` searches are still pending, and the eight most recently blocked players with how many of their lines were hidden and
 why (their guild, "player list", or "word"; never the word itself). Drag it to move. **Lock** fixes
 it in place and lets clicks pass through it; **x** hides it. `/rb panel` or the window's **Panel**
 button brings it back. Its position is saved.

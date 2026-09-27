@@ -2,8 +2,8 @@
 
 ## Unreleased
 
-- On-screen panel: lines blocked, and the most recently blocked players with counts and the
-  reason. Movable, lockable (locked, clicks pass through), position saved. `/rb panel`, or the
+- On-screen panel: lines blocked, `/who` searches still pending, and the most recently blocked
+  players with counts and the reason. Movable, lockable (locked, clicks pass through), position saved. `/rb panel`, or the
   **Panel** button in the window.
 - Scans are quiet: the game's `/who` result lines are kept out of chat while the addon's searches
   run, and the addon prints one line at the start and a one-line summary at the end.

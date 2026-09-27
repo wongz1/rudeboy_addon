@@ -39,6 +39,11 @@ local function quiet()
     return not (ns.db and ns.db.scanChat)
 end
 
+-- How many searches are still to be answered: the queue, plus the one in flight.
+function ns.ScanPending()
+    return #queue + (inflight and 1 or 0)
+end
+
 -- Progress lines, only shown with /rb scanchat on.
 local function detail(msg)
     if not quiet() then P(msg) end
@@ -94,6 +99,7 @@ local function send(s)
     end
     inflight = { search = s, sentAt = GetTime() }
     lastSent = inflight.sentAt
+    if ns.RefreshPanel then ns.RefreshPanel() end
     return true
 end
 
@@ -105,6 +111,7 @@ function ns.ScanThrottled()
     lastSent = GetTime()   -- the refusal restarts the server's timer
     quietUntil = lastSent + 1
     setListening(true)
+    if ns.RefreshPanel then ns.RefreshPanel() end
     detail(("the server allows one /who every few seconds; %d to go, sent as you play."):format(#queue))
 end
 
@@ -182,6 +189,7 @@ function ns.ScanResults(num, total)
     else
         setListening(true)   -- split searches were queued
     end
+    if ns.RefreshPanel then ns.RefreshPanel() end
 end
 
 -- Guild names to look up. /who g-"Crank" matches every guild containing the word, so each
@@ -232,6 +240,7 @@ function ns.Scan(guild)
     setListening(true)
     if busy then
         P(("%s; %d queued, sent as you play."):format(busy, #queue))
+        if ns.RefreshPanel then ns.RefreshPanel() end
         return
     end
     local s = table.remove(queue, 1)
