@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.7
+
+- Fixed scans getting stuck with searches pending and "0 players total" repeating in chat:
+  - big guilds are now split by level range instead of class (class filters return nothing on
+    WoW Forever);
+  - the game's `/who` lines are recognised in the form the game actually sends them, so answers
+    are counted and the lines are kept out of chat;
+  - a search that gets no answer is tried twice and then skipped, instead of being re-sent
+    without end.
+
 ## 0.1.6
 
 - On-screen panel: lines blocked, `/who` searches still pending, and the most recently blocked

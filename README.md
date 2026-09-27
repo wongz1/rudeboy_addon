@@ -162,7 +162,7 @@ guild member it has already seen. It learns guilds from:
 
 Adding a guild or keyword looks it up at once. `/rb scan` (or the Scan button) looks up everything
 on your list. One `/who` shows at most 50 people, so a search that comes back full is split into
-one search per class, and a class that is still full is split by level range. The game only lets an
+ranges of ten levels, and a range that is still full is halved until it fits. The game only lets an
 addon send `/who` from inside a key press or mouse click, so the queued searches go out from
 whatever keys and clicks you make while playing, about six seconds apart, until it says
 "Scan finished". `/rb scan <guild>` does just that guild. Online members are hidden from then on.

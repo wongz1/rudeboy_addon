@@ -119,6 +119,12 @@ local function boot(opts)
         local n = env.guidNames[guid]
         if n then return "Warrior", "WARRIOR", "Human", "Human", 2, n, "" end
     end
+    -- the game's own templates for /who lines, as on an English client
+    _G.WHO_NUM_RESULTS = "%d |4player:players; total"
+    _G.WHO_LIST_FORMAT = "|Hplayer:%s|h[%s]|h: Level %d %s %s - %s"
+    _G.WHO_LIST_GUILD_FORMAT = "|Hplayer:%s|h[%s]|h: Level %d %s %s <%s> - %s"
+    _G.GetMaxPlayerLevel = function() return opts.maxLevel or 60 end
+    _G.UnitLevel = function() return opts.level or 60 end
     _G.UnitFactionGroup = function() return opts.faction or "Horde" end
     _G.DeclineGroup = function() env.declined = env.declined + 1 end
     _G.StaticPopup_Hide = function() end
@@ -295,16 +301,16 @@ do
     -- queued searches go out from ordinary key presses and clicks, six seconds apart
     env.slash("scan")
     env.whoAnswer(83, "Big Guild")
-    check(env.lastPrint():find("8 searches") and env.lastPrint():find("sent as you play"), "a full answer queues the class searches")
+    check(env.lastPrint():find("Split by level into 6 searches") and env.lastPrint():find("sent as you play"), "a full answer queues searches by level range")
     local hw = _G.RudeBoyHardwareFrame
     check(hw and hw.keyboard == true, "the addon listens for key presses while searches are queued")
     env.whoQuery = nil
     hw.scripts.OnKeyDown(hw, "W")
-    check(env.whoQuery == 'g-"Big Guild" c-"Warrior"', "a key press sends the next search")
+    check(env.whoQuery == 'g-"Big Guild" 1-10', "a key press sends the next search")
     env.whoAnswer(10, "Big Guild")
     env.whoQuery = nil
     hw.scripts.OnKeyDown(hw, "W")
-    check(env.whoQuery == 'g-"Big Guild" c-"Hunter"', "the answer plus the gap lets the next one go")
+    check(env.whoQuery == 'g-"Big Guild" 11-20', "the answer plus the gap lets the next one go")
     env.whoQuery = nil
     hw.scripts.OnKeyDown(hw, "W")
     check(env.whoQuery == nil, "not while an answer is pending")
@@ -314,7 +320,7 @@ do
     check(env.whoQuery == nil, "not inside the six-second gap")
     env.now = env.now + 7
     _G.WorldFrame.scripts.OnMouseDown(_G.WorldFrame, "LeftButton")
-    check(env.whoQuery == 'g-"Big Guild" c-"Rogue"', "a mouse click sends one too")
+    check(env.whoQuery == 'g-"Big Guild" 21-30', "a mouse click sends one too")
     for _ = 1, 10 do
         env.whoAnswer(10, "Big Guild")
         hw.scripts.OnKeyDown(hw, "W")
@@ -326,31 +332,64 @@ do
 
     env.slash("scan")
     env.whoAnswer(83, "Big Guild")
-    check(env.lastPrint():find("83 online") and env.lastPrint():find("8 searches"), "a full answer is split by class (8 for Horde)")
+    check(env.lastPrint():find("83 online") and env.lastPrint():find("Split by level into 6 searches"), "a full guild is split into ranges of ten levels")
     local sent = {}
-    for _ = 1, 20 do
+    for _ = 1, 30 do
         if env.lastPrint():find("Scan finished") then break end
         env.slash("scan")
         sent[#sent + 1] = env.whoQuery
-        local fullClass = env.whoQuery == 'g-"Big Guild" c-"Warrior"'
-        env.whoAnswer(fullClass and 60 or 10, "Big Guild")
-        if fullClass then check(env.lastPrint():find("Split by level into 4"), "a full class is split by level") end
+        local q = env.whoQuery
+        -- 51-60 is full, then 56-60, then 58-60, then 60 alone stays full
+        local full = q:find(" 51%-60$") or q:find(" 56%-60$") or q:find(" 59%-60$") or q:find(" 60%-60$")
+        env.whoAnswer(full and 60 or 10, "Big Guild")
+        if q:find(" 51%-60$") then check(env.lastPrint():find("Split by level into 2 searches"), "a full range is halved") end
+        if q:find(" 60%-60$") then check(env.lastPrint():find("still 60 online, some may be missed"), "a single full level can't be split further") end
     end
     check(env.lastPrint():find("Scan finished"), "the queue runs out")
-    check(#sent == 12, "8 class searches plus 4 level searches")
-    check(sent[1] == 'g-"Big Guild" c-"Warrior"', "class search syntax")
-    local joined = table.concat(sent, "|")
-    check(not joined:find("Paladin") and joined:find("Shaman"), "Horde skips Paladin, keeps Shaman")
-    check(sent[2] == 'g-"Big Guild" c-"Warrior" 1-29', "level searches come right after the full class")
+    check(table.concat(sent, "|") == table.concat({
+        'g-"Big Guild" 1-10', 'g-"Big Guild" 11-20', 'g-"Big Guild" 21-30', 'g-"Big Guild" 31-40', 'g-"Big Guild" 41-50',
+        'g-"Big Guild" 51-60', 'g-"Big Guild" 51-55', 'g-"Big Guild" 56-60', 'g-"Big Guild" 56-58', 'g-"Big Guild" 59-60',
+        'g-"Big Guild" 59-59', 'g-"Big Guild" 60-60' }, "|"), "ranges in order, halves right after the full range")
+    check(not table.concat(sent, "|"):find("c%-"), "no class filters (they return nothing on WoW Forever)")
 
-    local ally = boot({ faction = "Alliance" })
-    ally.slash("guild add Big Guild")
-    ally.slash("scan")
-    ally.whoAnswer(70, "Big Guild")
-    local seen = {}
-    for _ = 1, 8 do ally.slash("scan") seen[#seen + 1] = ally.whoQuery ally.whoAnswer(1, "Big Guild") end
-    seen = table.concat(seen, "|")
-    check(seen:find("Paladin") and not seen:find("Shaman"), "Alliance skips Shaman, keeps Paladin")
+    -- a higher level cap is covered
+    local cap = boot({ maxLevel = 70 })
+    cap.slash("guild add Big Guild")
+    cap.whoAnswer(70, "Big Guild")
+    check(cap.lastPrint():find("Split by level into 7 searches"), "the client's level cap sets the ranges")
+
+    -- the lines the game prints for small answers, raw and as displayed
+    local raw = boot()
+    raw.slash("guild add Big Guild")
+    raw.fire("CHAT_MSG_SYSTEM", "|Hplayer:Hermaeus Xarxes|h[Hermaeus Xarxes]|h: Level 12 Dwarf Warrior <Big Guild> - Dun Morogh")
+    raw.fire("CHAT_MSG_SYSTEM", "|Hplayer:Lone Wolf|h[Lone Wolf]|h: Level 3 Gnome Mage - Dun Morogh")
+    check(raw.ns.GuildOf("Hermaeus Xarxes") == "Big Guild", "a result line with a guild is read")
+    check(raw.ns.db.known[raw.ns.NormalizeName("Lone Wolf")].g == "", "a result line without a guild is read as unguilded")
+    raw.fire("CHAT_MSG_SYSTEM", "2 |4player:players; total")
+    check(raw.lastPrint():find("2 found") and raw.lastPrint():find("Scan finished"), "the total line is recognised with its grammar code unresolved")
+    for _, line in ipairs({ "0 players total", "1 player total", "0 |4player:players; total" }) do
+        local kind, n = raw.ns.ParseWho(line)
+        check(kind == "total" and n == tonumber(line:match("^%d+")), "total line: " .. line)
+    end
+    check(raw.ns.ParseWho("Some One has come online.") == nil and raw.ns.ParseWho("12 players in queue") == nil, "other system lines are not /who lines")
+
+    -- a search that never gets an answer is sent twice, then dropped
+    local lost = boot()
+    lost.slash("guild add Alpha")
+    lost.whoAnswer(1, "Alpha")
+    lost.slash("guild add Beta")
+    local hw2 = _G.RudeBoyHardwareFrame
+    lost.ns.Scan("Alpha")            -- queued behind the unanswered Beta search
+    lost.whoQuery = nil
+    lost.now = lost.now + 9
+    hw2.scripts.OnKeyDown(hw2, "W")
+    check(lost.whoQuery == 'g-"Beta"', "an unanswered search is sent a second time")
+    lost.whoQuery = nil
+    lost.now = lost.now + 9
+    hw2.scripts.OnKeyDown(hw2, "W")
+    check(lost.whoQuery == 'g-"Alpha"' and lost.ns.ScanPending() == 1, "after two tries it is dropped and the queue moves on")
+    lost.whoAnswer(1, "Alpha")
+    check(lost.ns.ScanPending() == 0, "and the scan still finishes")
 
     -- several guilds, one search each run; waits for answers; resends a lost search
     local multi = boot()
@@ -397,7 +436,7 @@ do
     named.slash("scan big guild")
     named.whoAnswer(90, "Big Guild")
     named.slash("scan Big Guild")
-    check(named.whoQuery:find('c%-"'), "/rb scan <guild> again continues the split")
+    check(named.whoQuery == 'g-"Big Guild" 1-10', "/rb scan <guild> again continues the split")
 end
 
 ---------------------------------------------------------------------------
@@ -1098,6 +1137,7 @@ do
     check(#env.prints == n + 2 and env.lastPrint():find("looking up <Big Guild>%. Results stay out of chat"), "one line when a scan starts")
     check(sys({}, "CHAT_MSG_SYSTEM", whoLine) == true, "the game's result lines are hidden while a search is in flight")
     check(sys({}, "CHAT_MSG_SYSTEM", "3 players total") == true, "and the total line")
+    check(sys({}, "CHAT_MSG_SYSTEM", "0 |4player:players; total") == true, "in the raw form the game sends too")
     check(sys({}, "CHAT_MSG_SYSTEM", "You must wait a moment before using /who again.") == true, "and the server's wait message")
     check(sys({}, "CHAT_MSG_SYSTEM", "Some One has come online.") == false, "other system messages are left alone")
     env.fire("CHAT_MSG_SYSTEM", whoLine)
@@ -1112,7 +1152,7 @@ do
     check(#env.prints == n, "a full answer being split prints nothing")
     check(sys({}, "CHAT_MSG_SYSTEM", "50 players total") == true, "the last lines of an answer are still hidden just after it")
     local hw = _G.RudeBoyHardwareFrame
-    for _ = 1, 8 do
+    for _ = 1, 6 do
         env.now = env.now + 7
         hw.scripts.OnKeyDown(hw, "W")
         env.who = {}
@@ -1120,7 +1160,7 @@ do
         env.whoTotal = 5
         env.fire("WHO_LIST_UPDATE")
     end
-    check(#env.prints == n + 1 and env.lastPrint():find("Scan finished: 40 online members of blocked guilds found in 9 searches%."),
+    check(#env.prints == n + 1 and env.lastPrint():find("Scan finished: 30 online members of blocked guilds found in 7 searches%."),
         "one summary line when the scan ends")
     env.now = env.now + 5
     check(sys({}, "CHAT_MSG_SYSTEM", whoLine) == false, "afterwards /who lines are shown again")
@@ -1166,13 +1206,13 @@ do
     env.slash("guild add Huge Guild")
     check(pending() == "Searches pending: 1  (sent as you play)", "the search in flight counts")
     env.whoAnswer(90, "Huge Guild")
-    check(pending() == "Searches pending: 8  (sent as you play)", "a full answer's split searches are counted")
+    check(pending() == "Searches pending: 6  (sent as you play)", "a full answer's split searches are counted")
     local hw = _G.RudeBoyHardwareFrame
     hw.scripts.OnKeyDown(hw, "W")
-    check(pending() == "Searches pending: 8  (sent as you play)", "sending one moves it from queued to in flight")
+    check(pending() == "Searches pending: 6  (sent as you play)", "sending one moves it from queued to in flight")
     env.whoAnswer(3, "Huge Guild")
-    check(pending() == "Searches pending: 7  (sent as you play)", "an answer takes one off")
-    for _ = 1, 7 do
+    check(pending() == "Searches pending: 5  (sent as you play)", "an answer takes one off")
+    for _ = 1, 5 do
         hw.scripts.OnKeyDown(hw, "W")
         env.whoAnswer(3, "Huge Guild")
     end

@@ -64,21 +64,25 @@ local function learnWhoResults()
     if ns.ScanResults then ns.ScanResults(num, total) end
 end
 
--- Short /who answers are printed to chat instead of the Who window, as lines like
--- "|Hplayer:Name|h[Name]|h: Level 60 Human Warrior <Guild> - Zone" (English client),
--- ending with "3 players total".
+-- Short /who answers are printed to chat instead of the Who window: one line per player, then
+-- a total. ns.ParseWho reads them using the game's own templates.
 function ns.LearnWhoLine(msg)
-    if type(msg) ~= "string" then return end
-    local name, rest = msg:match("^|Hplayer:([^|:]+)[^|]*|h.-|h: Level (.*)$")
-    if name then
-        ns.RememberGuild(name, rest:match("<(.-)>") or "")
-        return
+    local kind, a, b = ns.ParseWho(msg)
+    -- While a scan runs, keep the last few system lines exactly as the game sent them, with
+    -- what they were taken for, so a format this doesn't recognise can be found in the saved file.
+    if ns.db and ns.ScanPending and ns.ScanPending() > 0 and type(msg) == "string" then
+        local seen = ns.db.whoSeen or {}
+        ns.db.whoSeen = seen
+        seen[#seen + 1] = { msg = msg, as = kind or "not /who" }
+        while #seen > 12 do table.remove(seen, 1) end
     end
-    local total = tonumber(msg:match("^(%d+) players? total"))
-    if total and ns.ScanResults then ns.ScanResults(total, total) return end
-    -- "You must wait a moment before using /who again." (or similar): the search was dropped
-    local lower = msg:lower()
-    if lower:find("/who", 1, true) and lower:find("wait", 1, true) and ns.ScanThrottled then ns.ScanThrottled() end
+    if kind == "player" then
+        ns.RememberGuild(a, b)
+    elseif kind == "total" then
+        ns.ScanResults(a, a)
+    elseif kind == "throttle" then
+        ns.ScanThrottled()   -- the search was dropped by the server
+    end
 end
 
 ---------------------------------------------------------------------------

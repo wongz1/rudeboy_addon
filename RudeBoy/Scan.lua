@@ -1,9 +1,9 @@
 --[[
     Scan.lua - /rb scan: learns who is in your filtered guilds with /who.
 
-    One /who shows at most 50 people, so a search that comes back full is split up:
-        whole guild  ->  one search per class  ->  that class by level range
-    and the smaller searches are queued. The game only lets an addon send /who from inside a
+    One /who shows at most 50 people, so a search that comes back full is split up by level:
+        whole guild  ->  ranges of ten levels  ->  a full range is halved, down to one level
+    and the smaller searches are queued. (Class filters return nothing on WoW Forever.) The game only lets an addon send /who from inside a
     key press or mouse click, so the queue can't run on a timer; instead, while searches are
     queued, the next one is sent from whatever key press or click you make anyway, about six
     seconds apart, until the queue is empty. /rb scan (or the Scan button, or adding a guild)
@@ -25,15 +25,16 @@ local P = ns.Print
 local CAP = 50            -- the most people one /who shows
 local TIMEOUT = 8         -- seconds to wait for an answer before sending the search again
 local GAP = 6             -- the server allows about one /who this many seconds apart
-local CLASSES = { "Warrior", "Paladin", "Hunter", "Rogue", "Priest", "Shaman", "Mage", "Warlock", "Druid" }
-local LEVELS = { "1-29", "30-49", "50-59", "60-100" }
+local CHUNK = 10          -- levels per search when a guild is first split
+local MAX_TRIES = 2       -- a search with no recognisable answer is dropped after this many sends
 
-local queue = {}          -- searches still to send: { guild = , class = , level = }
+local queue = {}          -- searches still to send: { guild = , lo = , hi = , tries = }
 local inflight            -- { search = , sentAt = } waiting for its answer
 local lastSent = -GAP     -- GetTime() of the last /who sent
+local remaining           -- defined below
 local setListening        -- defined below: whether key presses are watched for sending the queue
 local quietUntil = 0      -- result lines are hidden until this GetTime(), to cover an answer's last lines
-local tally = { found = 0, searches = 0, capped = false }   -- for the summary of a quiet scan
+local tally = { found = 0, searches = 0, capped = false, dropped = 0 }   -- for the summary of a quiet scan
 
 local function quiet()
     return not (ns.db and ns.db.scanChat)
@@ -51,37 +52,34 @@ end
 
 function ns.WhoQuery(s)
     local q = ('g-"%s"'):format(s.guild)
-    if s.class then q = q .. (' c-"%s"'):format(s.class) end
-    if s.level then q = q .. " " .. s.level end
+    if s.lo then q = q .. (" %d-%d"):format(s.lo, s.hi) end
     return q
 end
 
 local function describe(s)
     local d = ("<%s>"):format(s.guild)
-    if s.class then d = d .. " " .. s.class .. "s" end
-    if s.level then d = d .. " level " .. s.level end
+    if s.lo then d = d .. (s.lo == s.hi and (" level %d"):format(s.lo) or (" levels %d-%d"):format(s.lo, s.hi)) end
     return d
 end
 
--- Paladins are Alliance only and Shamans Horde only, so the other faction's is skipped.
-local function classesToSearch()
-    local faction = UnitFactionGroup and UnitFactionGroup("player")
-    local list = {}
-    for _, c in ipairs(CLASSES) do
-        if not ((c == "Paladin" and faction == "Horde") or (c == "Shaman" and faction == "Alliance")) then
-            list[#list + 1] = c
-        end
-    end
-    return list
+local function maxLevel()
+    local cap = (GetMaxPlayerLevel and GetMaxPlayerLevel()) or 60
+    return math.max(cap, (UnitLevel and UnitLevel("player")) or 1)
 end
 
--- Queues the next finer searches for a full one, ahead of everything else. Returns how many.
+-- Queues smaller searches for a full one, ahead of everything else. Returns how many: a whole
+-- guild becomes ranges of CHUNK levels, a range is halved, a single level can't be split.
 local function split(s)
     local parts = {}
-    if not s.class then
-        for _, c in ipairs(classesToSearch()) do parts[#parts + 1] = { guild = s.guild, class = c } end
-    elseif not s.level then
-        for _, l in ipairs(LEVELS) do parts[#parts + 1] = { guild = s.guild, class = s.class, level = l } end
+    if not s.lo then
+        local top = maxLevel()
+        for lo = 1, top, CHUNK do
+            parts[#parts + 1] = { guild = s.guild, lo = lo, hi = math.min(lo + CHUNK - 1, top) }
+        end
+    elseif s.lo < s.hi then
+        local mid = math.floor((s.lo + s.hi) / 2)
+        parts[1] = { guild = s.guild, lo = s.lo, hi = mid }
+        parts[2] = { guild = s.guild, lo = mid + 1, hi = s.hi }
     end
     for i = #parts, 1, -1 do table.insert(queue, 1, parts[i]) end
     return #parts
@@ -103,6 +101,23 @@ local function send(s)
     return true
 end
 
+-- The search in flight got no answer in time: send it again, or give up on it after
+-- MAX_TRIES so that one bad search can't hold up the queue for ever.
+function ns.ScanUnanswered()
+    if not inflight then return end
+    local s = inflight.search
+    inflight = nil
+    s.tries = (s.tries or 1) + 1
+    if s.tries > MAX_TRIES then
+        tally.dropped = tally.dropped + 1
+        detail(("%s: no answer, skipped. %s"):format(describe(s), remaining()))
+        if #queue == 0 then ns.ScanResults(nil, nil, true) end
+    else
+        table.insert(queue, 1, s)
+    end
+    if ns.RefreshPanel then ns.RefreshPanel() end
+end
+
 -- The server answered "wait a moment before using /who again": that search was dropped.
 function ns.ScanThrottled()
     if not inflight then return end
@@ -115,7 +130,7 @@ function ns.ScanThrottled()
     detail(("the server allows one /who every few seconds; %d to go, sent as you play."):format(#queue))
 end
 
-local function remaining()
+remaining = function()
     return #queue == 0 and "Scan finished." or ("%d more to go, sent as you play."):format(#queue)
 end
 
@@ -135,13 +150,12 @@ local function pump()
     if #queue == 0 or not ns.db then setListening(false) return end
     if inflight then
         if GetTime() - inflight.sentAt < TIMEOUT then return end
-        table.insert(queue, 1, inflight.search)   -- no answer came, send it again
-        inflight = nil
+        ns.ScanUnanswered()
     end
     if GetTime() - lastSent < GAP then return end
     local s = table.remove(queue, 1)
+    if not s then setListening(false) return end
     send(s)
-    if #queue == 0 then setListening(false) end
 end
 ns.PumpScan = pump
 
@@ -157,22 +171,22 @@ end
 
 -- Called with the size of each /who answer. `total` is how many matched, which can be more
 -- than the `num` shown.
-function ns.ScanResults(num, total)
-    if not inflight then return end
-    local s = inflight.search
+function ns.ScanResults(num, total, finishOnly)
+    if not inflight and not finishOnly then return end
+    local s = inflight and inflight.search or { guild = "" }
     inflight = nil
-    local count = math.max(num or 0, total or 0)
+    local count = finishOnly and 0 or math.max(num or 0, total or 0)
     quietUntil = GetTime() + 1
-    tally.searches = tally.searches + 1
-    if count >= CAP and not s.level then
-        local n = split(s)   -- its members are counted by the smaller searches
-        detail(("%s: %d online, more than one /who shows. Split by %s into %d searches. %s"):format(
-            describe(s), count, s.class and "level" or "class", n, remaining()))
+    if not finishOnly then tally.searches = tally.searches + 1 end
+    local parts = count >= CAP and split(s) or 0   -- its members are counted by the smaller searches
+    if parts > 0 then
+        detail(("%s: %d online, more than one /who shows. Split by level into %d searches. %s"):format(
+            describe(s), count, parts, remaining()))
     elseif count >= CAP then
         tally.found = tally.found + CAP
         tally.capped = true
         detail(("%s: still %d online, some may be missed. %s"):format(describe(s), count, remaining()))
-    else
+    elseif not finishOnly then
         tally.found = tally.found + count
         detail(("%s: %d found. %s"):format(describe(s), count, remaining()))
     end
@@ -181,11 +195,12 @@ function ns.ScanResults(num, total)
         ns.Changed()
         setListening(false)
         if quiet() then
-            P(("Scan finished: %d online member%s of blocked guilds found in %d search%s.%s"):format(
+            P(("Scan finished: %d online member%s of blocked guilds found in %d search%s.%s%s"):format(
                 tally.found, tally.found == 1 and "" or "s", tally.searches, tally.searches == 1 and "" or "es",
-                tally.capped and " One search was still full, so a few may be missed." or ""))
+                tally.capped and " One search was still full, so a few may be missed." or "",
+                tally.dropped > 0 and (" %d got no answer."):format(tally.dropped) or ""))
         end
-        tally = { found = 0, searches = 0, capped = false }
+        tally = { found = 0, searches = 0, capped = false, dropped = 0 }
     else
         setListening(true)   -- split searches were queued
     end
@@ -215,8 +230,7 @@ function ns.Scan(guild)
     elseif GetTime() - lastSent < GAP then
         busy = "the server allows one /who every few seconds"
     elseif inflight then
-        table.insert(queue, 1, inflight.search)   -- no answer came, send it again
-        inflight = nil
+        ns.ScanUnanswered()
     end
 
     if guild ~= "" then
@@ -255,17 +269,64 @@ function ns.Scan(guild)
     if #queue == 0 then setListening(false) end
 end
 
+-- Turns one of the game's text templates ("%d |4player:players; total") into a Lua pattern.
+-- The grammar code |4singular:plural; reaches addons either raw or already resolved, so
+-- anything is accepted in its place.
+local function patternFrom(template)
+    if type(template) ~= "string" or template == "" then return nil end
+    local p = template:gsub("%%%d+%$", "%%")                       -- "%1$s" -> "%s"
+    p = p:gsub("|4[^;]-;", "\1")                                   -- mark the grammar code
+    p = p:gsub("[%^%$%(%)%%%.%[%]%*%+%-%?]", "%%%0")               -- escape pattern characters
+    p = p:gsub("%%%%s", "(.-)"):gsub("%%%%d", "(%%d+)")             -- "%s" and "%d" placeholders
+    p = p:gsub("\1", ".-")
+    return "^" .. p .. "$"
+end
+
+local patterns   -- built on first use, when the game's templates are certain to be loaded
+local function whoPatterns()
+    if not patterns then
+        patterns = {
+            total = patternFrom(WHO_NUM_RESULTS),
+            guild = patternFrom(WHO_LIST_GUILD_FORMAT),
+            plain = patternFrom(WHO_LIST_FORMAT),
+        }
+    end
+    return patterns
+end
+
+-- What a system message is, if it belongs to /who:
+--   "total", n            the closing line of an answer
+--   "player", name, guild one result (guild "" when they have none)
+--   "throttle"            the server refused the search
+function ns.ParseWho(msg)
+    if type(msg) ~= "string" then return nil end
+    local pt = whoPatterns()
+
+    local n = (pt.total and msg:match(pt.total)) or msg:match("^(%d+) players? total") or msg:match("^(%d+) |4[^;]-; total")
+    if n then return "total", tonumber(n) end
+
+    if pt.guild then
+        local link, _, _, _, _, guild = msg:match(pt.guild)
+        if link and guild then return "player", (link:gsub(":.*$", "")), guild end
+    end
+    if pt.plain then
+        local link = msg:match(pt.plain)
+        if link then return "player", (link:gsub(":.*$", "")), "" end
+    end
+    local name, rest = msg:match("^|Hplayer:([^|:]+)[^|]*|h.-|h: Level (.*)$")
+    if name then return "player", name, rest:match("<(.-)>") or "" end
+
+    local lower = msg:lower()
+    if lower:find("/who", 1, true) and lower:find("wait", 1, true) then return "throttle" end
+    return nil
+end
+
 -- Keeps the game's /who result lines out of chat while one of the addon's searches is in
 -- flight. The addon's event handler still reads them; this only affects what is displayed.
 function ns.WhoChatFilter(frame, event, msg)
     if not quiet() or type(msg) ~= "string" then return false end
     if not (inflight or GetTime() < quietUntil) then return false end
-    local lower = msg:lower()
-    if msg:find("^|Hplayer:[^|]+|h.-|h: Level ") or msg:find("^%d+ players? total")
-        or (lower:find("/who", 1, true) and lower:find("wait", 1, true)) then
-        return true
-    end
-    return false
+    return ns.ParseWho(msg) ~= nil
 end
 ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", ns.WhoChatFilter)
 
