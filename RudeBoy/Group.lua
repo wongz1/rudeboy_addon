@@ -222,6 +222,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
         if ns.loadedFromDisk and not ns.dbSeenAt then ns.dbSeenAt = "PLAYER_LOGIN" end
         ns.LoadDB()
         announce()
+        if ns.InitPanel then ns.InitPanel() end
         loginAt = GetTime()
         if not ns.loadedFromDisk then watchUntil = loginAt + 60 end
     elseif event == "PLAYER_ENTERING_WORLD" then

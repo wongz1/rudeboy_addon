@@ -27,4 +27,5 @@ Scan.lua
 Tooltip.lua
 Bubbles.lua
 UI.lua
+Panel.lua
 Commands.lua

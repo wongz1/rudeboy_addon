@@ -70,6 +70,14 @@ The Words tab never shows your words on its own: every entry reads `********` un
 **Show**, and they are masked again when you reopen the window or switch tabs. Adding or removing
 words from the window reports how many, not which.
 
+## The on-screen panel
+
+A small panel you can park anywhere shows what Rude Boy has done: lines blocked in total and this
+session, and the eight most recently blocked players with how many of their lines were hidden and
+why (their guild, "player list", or "word"; never the word itself). Drag it to move. **Lock** fixes
+it in place and lets clicks pass through it; **x** hides it. `/rb panel` or the window's **Panel**
+button brings it back. Its position is saved.
+
 ## Checking what was hidden
 
 - **Hidden tab** in the window: the last 100 hidden lines, newest first, with time, channel,
@@ -113,6 +121,9 @@ words from the window reports how many, not which.
 /rb decline guild on | off   decline guild invites from filtered people or filtered guilds (off by default)
 /rb reminder <minutes>       how old a scan gets before you're reminded (30 to 720, default 720)
 /rb log [clear]              the last 20 hidden lines in chat, with their text (or clear the list)
+/rb panel [show | hide]      the on-screen panel: lines blocked and who was blocked
+/rb panel lock | unlock      fix it in place (clicks pass through) or let it be dragged
+/rb panel reset              back to its default position
 /rb scanchat on | off        show every scan step and /who result in chat (off by default)
 /rb bubbles on | off         hide blocked players' chat bubbles in the open world (on by default)
 /rb preview on | off         leave would-be-hidden lines in chat with a grey tag, for testing

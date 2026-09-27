@@ -13,6 +13,8 @@
     a member of a listed guild (the part that is otherwise invisible). Exempt on a row lets that
     person through anyway; their exemption shows at the top of the tab with Unexempt.
 
+    Panel (beside About) shows or hides the small on-screen panel, see Panel.lua.
+
     The bottom of the window sets how often to be reminded to scan, and About explains
     why guild lists need regular scans.
 
@@ -428,6 +430,8 @@ local function build()
         if ui.about:IsShown() then ui.about:Hide() else ui.about:Show() end
     end)
     ui.aboutButton:SetPoint("TOPLEFT", 18, -14)
+    ui.panelButton = button(f, "Panel", 64, function() ns.SetPanelShown(not ns.db.panel.shown) end)
+    ui.panelButton:SetPoint("TOPLEFT", 86, -14)   -- beside About, clear of the tabs below
 
     ui.tabs = {}
     for i, tab in ipairs(TABS) do

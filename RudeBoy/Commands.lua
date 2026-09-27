@@ -28,6 +28,9 @@
     /rb decline guild on | off   decline guild invites from filtered people or filtered guilds
     /rb reminder <minutes>       remind to scan when the last scan is older (30 to 720)
     /rb log [clear]              the last 20 hidden lines, with their text (or clear the list)
+    /rb panel [show | hide]      the small on-screen panel: lines blocked and who was blocked
+    /rb panel lock | unlock      fix it in place (clicks pass through) or let it be dragged
+    /rb panel reset              back to its default position
     /rb scanchat on | off        show every scan step and /who result in chat (off by default)
     /rb bubbles on | off         hide blocked players' chat bubbles in the open world (on by default)
     /rb preview on | off         show would-be-hidden lines with a grey tag instead, for testing
@@ -51,6 +54,7 @@ local HELP = {
     "/rb check - check your group now",
     "/rb alerts on | off,  /rb decline party on | off,  /rb decline guild on | off",
     "/rb reminder <minutes, 30 to 720>,  /rb bubbles on | off,  /rb scanchat on | off",
+    "/rb panel [show | hide | lock | unlock | reset] - the on-screen panel",
     "/rb log [clear] - the last hidden lines,  /rb preview on | off - tag lines instead of hiding",
     "/rb test <text> - would it be hidden?,  /rb debug - how the game writes names",
 }
@@ -308,6 +312,18 @@ SlashCmdList["RUDEBOY"] = function(input)
         printLog(action)
     elseif cmd == "preview" then
         toggle("preview", action, "preview (show would-be-hidden lines with a tag)")
+    elseif cmd == "panel" then
+        if action == "lock" or action == "unlock" then
+            ns.SetPanelLocked(action == "lock")
+            P("panel " .. (ns.db.panel.locked and "locked: it can't be moved, and clicks pass through it." or "unlocked: drag it where you want it."))
+        elseif action == "reset" then
+            ns.ResetPanel()
+            P("panel back at its default position, unlocked.")
+        else
+            local show = (action == "show") or (action ~= "hide" and not ns.db.panel.shown)
+            ns.SetPanelShown(show)
+            P("panel " .. (show and "shown. Drag it to move; /rb panel lock fixes it in place." or "hidden. /rb panel shows it again."))
+        end
     elseif cmd == "scanchat" then
         toggle("scanChat", action, "showing every scan step and /who result in chat")
     elseif cmd == "bubbles" then

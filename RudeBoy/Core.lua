@@ -17,6 +17,7 @@
         reminderMinutes  remind to scan when lastScan is older than this (30 to 720)
         log          the last 100 hidden lines, oldest first (the window's Hidden tab)
         preview      show would-be-hidden lines with a tag instead of hiding them
+        panel        { shown, locked, point, relativePoint, x, y } for the on-screen panel
         scanChat     show every step of a scan, and the game's /who lines, in chat
         bubbles      hide blocked players' speech bubbles in the open world
         keywords     { [normalized word] = "Shown Word" }   block every guild whose name contains it
@@ -305,6 +306,7 @@ end
 -- Lets the window redraw when a list changes from anywhere.
 function ns.Changed()
     if ns.RefreshUI then ns.RefreshUI() end
+    if ns.RefreshPanel then ns.RefreshPanel() end
 end
 
 function ns.AddWord(entry)
@@ -387,6 +389,7 @@ function ns.LoadDB()
     if db.preview == nil then db.preview = false end
     if db.bubbles == nil then db.bubbles = true end
     if db.scanChat == nil then db.scanChat = false end
+    if type(db.panel) ~= "table" then db.panel = { shown = true, locked = false } end
     db.keywords = db.keywords or {}
     if db.olympus then db.keywords[ns.NormalizeGuild(ns.OLYMPUS)] = ns.OLYMPUS end   -- older setting
     db.olympus = nil

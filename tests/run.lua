@@ -60,6 +60,12 @@ local function boot(opts)
     function methods:GetText() return self.text end
     function methods:SetChecked(v) self.checked = v and true or false end
     function methods:GetChecked() return self.checked end
+    function methods:SetPoint(...) self.point = { ... } end
+    function methods:GetPoint() if self.point then return self.point[1], self.point[2], self.point[3] or self.point[1], self.point[4] or 0, self.point[5] or 0 end end
+    function methods:ClearAllPoints() self.point = nil end
+    function methods:SetHeight(h) self.height = h end
+    function methods:EnableMouse(on) self.mouse = on and true or false end
+    function methods:SetMovable(on) self.movable = on and true or false end
     function methods:EnableKeyboard(on) self.keyboard = on and true or false end
     function methods:GetPropagateKeyboardInput() return true end
     function methods:Enable() self.enabled = true end
@@ -1124,6 +1130,63 @@ do
     env.slash("scan")
     check(env.lastPrint():find("looking up <Big Guild>%.%.%."), "with it on, the step lines are back")
     check(sys({}, "CHAT_MSG_SYSTEM", whoLine) == false, "and the game's lines are not hidden")
+end
+
+---------------------------------------------------------------------------
+-- The on-screen panel
+---------------------------------------------------------------------------
+do
+    local env = boot()
+    local panel = env.ns.panel
+    check(panel and panel:IsShown(), "the panel is shown at login by default")
+    check(panel.empty:IsShown() and panel.total:GetText():find("Lines blocked: |cffffd1000|r  %(0 this session%)"), "starts empty")
+    check(panel.point[1] == "RIGHT" and panel.movable == true and panel.mouse == true and panel.lock:GetText() == "Lock", "default position, unlocked")
+
+    env.slash("word add badword")
+    env.slash("guild add Streamer Army")
+    env.whoAnswer(1, "Streamer Army")
+    env.slash("player add Bad Actor")
+    env.ns.RememberGuild("Guild Minion", "Streamer Army")
+    env.filterRaw("CHAT_MSG_SAY", "a badword", "Loud Mouth", 1)
+    env.filterRaw("CHAT_MSG_SAY", "hi", "Guild Minion", 2)
+    env.filterRaw("CHAT_MSG_SAY", "hi", "Bad Actor", 3)
+    env.filterRaw("CHAT_MSG_SAY", "more badword", "Loud Mouth", 4)
+    local function rows()
+        local out = {}
+        for _, r in ipairs(panel.rows) do if r:IsShown() then out[#out + 1] = (r:GetText():gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")) end end
+        return table.concat(out, " / ")
+    end
+    check(rows() == "Loud Mouth  x2  word / Bad Actor  x1  player list / Guild Minion  x1  Streamer Army",
+        "names newest first, with counts and why; a word match never names the word")
+    check(panel.total:GetText():find("|cffffd1004|r  %(4 this session%)") and not panel.empty:IsShown(), "counts follow")
+
+    -- moving and locking
+    panel.point = { "TOPLEFT", _G.UIParent, "TOPLEFT", 40, -200 }
+    panel.scripts.OnDragStop(panel)
+    check(env.ns.db.panel.point == "TOPLEFT" and env.ns.db.panel.x == 40 and env.ns.db.panel.y == -200, "its position is saved after a drag")
+    panel.lock:Click()
+    check(env.ns.db.panel.locked and panel.movable == false and panel.mouse == false and panel.lock:GetText() == "Unlock",
+        "Lock fixes it in place and lets clicks through")
+    env.slash("panel unlock")
+    check(not env.ns.db.panel.locked and panel.movable == true, "/rb panel unlock")
+    panel.close:Click()
+    check(not panel:IsShown() and env.ns.db.panel.shown == false, "its close button hides it")
+    env.slash("panel")
+    check(panel:IsShown() and panel.point[1] == "TOPLEFT" and panel.point[4] == 40, "/rb panel shows it again where it was")
+    env.slash("panel reset")
+    check(panel.point[1] == "RIGHT" and env.ns.db.panel.point == nil, "/rb panel reset")
+
+    env.slash("")
+    env.ns.ui.panelButton:Click()
+    check(not panel:IsShown(), "the window's Panel button toggles it")
+
+    -- hidden stays hidden, and the names survive a restart
+    local saved = env.ns.db
+    local again = boot({ db = saved })
+    check(not again.ns.panel, "a hidden panel is not built at login")
+    again.slash("panel show")
+    local r1 = again.ns.panel.rows[1]:GetText()
+    check(r1 and r1:find("Loud Mouth"), "the names come back from the saved list")
 end
 
 realPrint(("%d passed, %d failed"):format(passed, failed))
