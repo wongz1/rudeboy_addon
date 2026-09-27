@@ -128,6 +128,10 @@ local function boot(opts)
     _G.UnitFactionGroup = function() return opts.faction or "Horde" end
     _G.DeclineGroup = function() env.declined = env.declined + 1 end
     _G.StaticPopup_Hide = function() end
+    env.hooks, env.closed = {}, {}
+    _G.hooksecurefunc = function(name, fn) env.hooks[name] = fn end
+    _G.ShowUIPanel = function() end
+    _G.HideUIPanel = function(frame) env.closed[#env.closed + 1] = frame env.whoWindowOpen = false end
     -- the game's Social window, which opens its Who list when it hears WHO_LIST_UPDATE
     _G.FriendsFrame = mockFrame()
     _G.FriendsFrame.events.WHO_LIST_UPDATE = true
@@ -1306,10 +1310,27 @@ do
     env.whoAnswer(2, "Big Guild")
     check(ff.events.WHO_LIST_UPDATE == true, "handed back after the answer")
 
+    -- a client that opens the Who list anyway: it is closed as soon as it shows
+    hw.scripts.OnKeyDown(hw, "W")
+    env.whoWindowOpen = true
+    env.hooks.ShowUIPanel(_G.FriendsFrame)
+    check(#env.closed == 1 and env.whoWindowOpen == false, "a Who list opened by the addon's search is closed at once")
+    env.whoAnswer(2, "Big Guild")
+    env.whoWindowOpen = true                  -- it shows a moment after the answer, without ShowUIPanel
+    for _, f in ipairs(env.frames) do
+        if f.scripts.OnUpdate and f ~= env.events and f ~= env.ns.reminderFrame and f ~= env.ns.bubbleWatcher then f.scripts.OnUpdate(f, 0.1) end
+    end
+    check(#env.closed == 2 and env.whoWindowOpen == false, "also when it shows just after the answer")
+    local popups = env.ns.db.scanPopups or {}
+    local names = {}
+    for k in pairs(popups) do names[#names + 1] = k end
+    check(#names > 0, "windows that opened during a search are noted for diagnosis")
+
     -- with the Who window open by the player's own choice, nothing is touched
     env.whoWindowOpen = true
     hw.scripts.OnKeyDown(hw, "W")
     check(env.whoQuery and ff.events.WHO_LIST_UPDATE == true and env.whoToUi == false, "your own open Who window keeps working")
+    check(#env.closed == 2, "and is not closed")
 end
 
 realPrint(("%d passed, %d failed"):format(passed, failed))

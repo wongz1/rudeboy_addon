@@ -121,8 +121,54 @@ local function whoWindowOpen()
     return (WhoFrame and WhoFrame.IsVisible and WhoFrame:IsVisible()) and true or false
 end
 
+-- Second line of defence, for clients where the window opens some other way: while a search
+-- is in flight and for a moment after its answer, a Who list that wasn't open when the search
+-- was sent is closed as soon as it shows.
+local openAtSend = false   -- the player had the Who list open themselves
+local closeUntil = 0
+local closer = CreateFrame("Frame")
+closer:Hide()
+
+local function topPanel(frame)
+    while frame.GetParent and frame:GetParent() and frame:GetParent() ~= UIParent do frame = frame:GetParent() end
+    return frame
+end
+
+local function rememberPopup(frame, how)
+    if not ns.db then return end
+    local list = ns.db.scanPopups or {}
+    ns.db.scanPopups = list
+    local name = (frame and frame.GetName and frame:GetName()) or tostring(frame)
+    list[name .. " (" .. how .. ")"] = (list[name .. " (" .. how .. ")"] or 0) + 1
+end
+
+local function closeWhoWindow()
+    if openAtSend or not whoWindowOpen() then return end
+    local top = topPanel(WhoFrame)
+    rememberPopup(top, "closed")
+    if HideUIPanel then pcall(HideUIPanel, top) end
+    if top.IsShown and top:IsShown() then pcall(top.Hide, top) end
+end
+
+closer:SetScript("OnUpdate", function(self)
+    pcall(closeWhoWindow)
+    if not inflight and GetTime() > closeUntil then self:Hide() end
+end)
+
+-- Any panel the game opens during a search is noted by name, so an unexpected one can be found.
+if hooksecurefunc and ShowUIPanel then
+    hooksecurefunc("ShowUIPanel", function(frame)
+        if inflight or GetTime() < closeUntil then
+            pcall(rememberPopup, frame, "opened")
+            pcall(closeWhoWindow)
+        end
+    end)
+end
+
 local function silenceWhoWindow()
-    if silenced or whoWindowOpen() then return end
+    openAtSend = whoWindowOpen()
+    closer:Show()
+    if silenced or openAtSend then return end
     silenced = {}
     for _, frame in ipairs({ FriendsFrame, WhoFrame }) do
         if frame and frame.IsEventRegistered and frame:IsEventRegistered("WHO_LIST_UPDATE") then
@@ -134,6 +180,8 @@ local function silenceWhoWindow()
 end
 
 local function restoreWhoWindow()
+    closeUntil = GetTime() + 1.5
+    pcall(closeWhoWindow)
     if not silenced then return end
     for _, frame in ipairs(silenced) do pcall(frame.RegisterEvent, frame, "WHO_LIST_UPDATE") end
     silenced = nil
