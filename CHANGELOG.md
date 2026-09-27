@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.6
 
 - On-screen panel: lines blocked, `/who` searches still pending, and the most recently blocked
   players with counts and the reason. Movable, lockable (locked, clicks pass through), position saved. `/rb panel`, or the
