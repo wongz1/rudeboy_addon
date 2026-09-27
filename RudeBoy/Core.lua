@@ -17,6 +17,7 @@
         reminderMinutes  remind to scan when lastScan is older than this (30 to 720)
         log          the last 100 hidden lines, oldest first (the window's Hidden tab)
         preview      show would-be-hidden lines with a tag instead of hiding them
+        scanChat     show every step of a scan, and the game's /who lines, in chat
         bubbles      hide blocked players' speech bubbles in the open world
         keywords     { [normalized word] = "Shown Word" }   block every guild whose name contains it
         recentAuthors  the last few chat senders as the game wrote them (/rb debug)
@@ -385,6 +386,7 @@ function ns.LoadDB()
     db.exempt = db.exempt or {}
     if db.preview == nil then db.preview = false end
     if db.bubbles == nil then db.bubbles = true end
+    if db.scanChat == nil then db.scanChat = false end
     db.keywords = db.keywords or {}
     if db.olympus then db.keywords[ns.NormalizeGuild(ns.OLYMPUS)] = ns.OLYMPUS end   -- older setting
     db.olympus = nil

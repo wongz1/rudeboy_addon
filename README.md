@@ -113,6 +113,7 @@ words from the window reports how many, not which.
 /rb decline guild on | off   decline guild invites from filtered people or filtered guilds (off by default)
 /rb reminder <minutes>       how old a scan gets before you're reminded (30 to 720, default 720)
 /rb log [clear]              the last 20 hidden lines in chat, with their text (or clear the list)
+/rb scanchat on | off        show every scan step and /who result in chat (off by default)
 /rb bubbles on | off         hide blocked players' chat bubbles in the open world (on by default)
 /rb preview on | off         leave would-be-hidden lines in chat with a grey tag, for testing
 /rb test <text>              would this line be hidden by your word list?
@@ -153,7 +154,11 @@ on your list. One `/who` shows at most 50 people, so a search that comes back fu
 one search per class, and a class that is still full is split by level range. The game only lets an
 addon send `/who` from inside a key press or mouse click, so the queued searches go out from
 whatever keys and clicks you make while playing, about six seconds apart, until it says
-"Scan finished". `/rb scan <guild>` does just that guild. Online members are hidden from then on. What the addon learns is saved and remembered for 30 days after it
+"Scan finished". `/rb scan <guild>` does just that guild. Online members are hidden from then on.
+
+Scans are quiet: the game's `/who` result lines are kept out of chat while the addon's searches
+run, and you get one line when a scan starts and a one-line summary when it ends. `/rb scanchat on`
+shows every step. A `/who` you type yourself is never hidden. What the addon learns is saved and remembered for 30 days after it
 last saw each player. A `/who` that shows someone has left the guild clears them.
 
 **Scan reminder.** Each finished scan is timed. At login, and while you play, Rude Boy prints

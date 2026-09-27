@@ -134,6 +134,7 @@ local function boot(opts)
     function env.fire(event, ...) env.events.scripts.OnEvent(env.events, event, ...) end
     function env.update() env.events.scripts.OnUpdate(env.events, 0.1) end
     env.fire("PLAYER_LOGIN")
+    if not opts.quiet then ns.db.scanChat = true end   -- most tests read the scan's step-by-step lines
 
     -- Returns true if the line would be hidden. Each chat window runs the filter, so it is run twice.
     function env.chat(event, msg, author, guid)
@@ -1074,6 +1075,55 @@ do
     ui.checks.bubbles:SetChecked(true)
     ui.checks.bubbles:Click()
     check(env.ns.db.bubbles == true, "checkbox turns it back on")
+end
+
+---------------------------------------------------------------------------
+-- Quiet scans (the default)
+---------------------------------------------------------------------------
+do
+    local env = boot({ quiet = true })
+    local sys = env.filters.CHAT_MSG_SYSTEM
+    local whoLine = "|Hplayer:Some Fan|h[Some Fan]|h: Level 60 Human Warrior <Big Guild> - Orgrimmar"
+    check(env.ns.db.scanChat == false, "scans are quiet by default")
+    check(sys({}, "CHAT_MSG_SYSTEM", whoLine) == false, "a /who you typed yourself is shown")
+
+    local n = #env.prints
+    env.slash("guild add Big Guild")
+    check(#env.prints == n + 2 and env.lastPrint():find("looking up <Big Guild>%. Results stay out of chat"), "one line when a scan starts")
+    check(sys({}, "CHAT_MSG_SYSTEM", whoLine) == true, "the game's result lines are hidden while a search is in flight")
+    check(sys({}, "CHAT_MSG_SYSTEM", "3 players total") == true, "and the total line")
+    check(sys({}, "CHAT_MSG_SYSTEM", "You must wait a moment before using /who again.") == true, "and the server's wait message")
+    check(sys({}, "CHAT_MSG_SYSTEM", "Some One has come online.") == false, "other system messages are left alone")
+    env.fire("CHAT_MSG_SYSTEM", whoLine)
+    check(env.ns.GuildOf("Some Fan") == "Big Guild", "hidden lines are still read")
+
+    n = #env.prints
+    env.now = env.now + 7
+    env.who = {}
+    for i = 1, 50 do env.who[i] = { fullName = "Member " .. i, fullGuildName = "Big Guild" } end
+    env.whoTotal = 83
+    env.fire("WHO_LIST_UPDATE")
+    check(#env.prints == n, "a full answer being split prints nothing")
+    check(sys({}, "CHAT_MSG_SYSTEM", "50 players total") == true, "the last lines of an answer are still hidden just after it")
+    local hw = _G.RudeBoyHardwareFrame
+    for _ = 1, 8 do
+        env.now = env.now + 7
+        hw.scripts.OnKeyDown(hw, "W")
+        env.who = {}
+        for i = 1, 5 do env.who[i] = { fullName = "M" .. i .. env.whoQuery, fullGuildName = "Big Guild" } end
+        env.whoTotal = 5
+        env.fire("WHO_LIST_UPDATE")
+    end
+    check(#env.prints == n + 1 and env.lastPrint():find("Scan finished: 40 online members of blocked guilds found in 9 searches%."),
+        "one summary line when the scan ends")
+    env.now = env.now + 5
+    check(sys({}, "CHAT_MSG_SYSTEM", whoLine) == false, "afterwards /who lines are shown again")
+
+    env.slash("scanchat on")
+    check(env.ns.db.scanChat == true, "/rb scanchat on")
+    env.slash("scan")
+    check(env.lastPrint():find("looking up <Big Guild>%.%.%."), "with it on, the step lines are back")
+    check(sys({}, "CHAT_MSG_SYSTEM", whoLine) == false, "and the game's lines are not hidden")
 end
 
 realPrint(("%d passed, %d failed"):format(passed, failed))

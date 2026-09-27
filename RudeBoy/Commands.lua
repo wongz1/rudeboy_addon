@@ -28,6 +28,7 @@
     /rb decline guild on | off   decline guild invites from filtered people or filtered guilds
     /rb reminder <minutes>       remind to scan when the last scan is older (30 to 720)
     /rb log [clear]              the last 20 hidden lines, with their text (or clear the list)
+    /rb scanchat on | off        show every scan step and /who result in chat (off by default)
     /rb bubbles on | off         hide blocked players' chat bubbles in the open world (on by default)
     /rb preview on | off         show would-be-hidden lines with a grey tag instead, for testing
     /rb test <text>              would this line be hidden?
@@ -49,7 +50,7 @@ local HELP = {
     "/rb scan [guild] - /who your guilds and keywords to learn who is in them",
     "/rb check - check your group now",
     "/rb alerts on | off,  /rb decline party on | off,  /rb decline guild on | off",
-    "/rb reminder <minutes, 30 to 720>,  /rb bubbles on | off",
+    "/rb reminder <minutes, 30 to 720>,  /rb bubbles on | off,  /rb scanchat on | off",
     "/rb log [clear] - the last hidden lines,  /rb preview on | off - tag lines instead of hiding",
     "/rb test <text> - would it be hidden?,  /rb debug - how the game writes names",
 }
@@ -307,6 +308,8 @@ SlashCmdList["RUDEBOY"] = function(input)
         printLog(action)
     elseif cmd == "preview" then
         toggle("preview", action, "preview (show would-be-hidden lines with a tag)")
+    elseif cmd == "scanchat" then
+        toggle("scanChat", action, "showing every scan step and /who result in chat")
     elseif cmd == "bubbles" then
         toggle("bubbles", action, "hiding blocked players' chat bubbles (open world only)")
         if not ns.db.bubbles and ns.ShowAllBubbles then ns.ShowAllBubbles() end

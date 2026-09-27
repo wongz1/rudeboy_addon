@@ -9,6 +9,11 @@
     seconds apart, until the queue is empty. /rb scan (or the Scan button, or adding a guild)
     starts it. With no guild name it covers every keyword and guild on your list.
 
+    Scans are quiet: the game's /who result lines are kept out of chat while one of these
+    searches is in flight (they are still read), and the addon prints one line when a scan
+    starts and one summary when it ends. /rb scanchat on shows every step instead. A /who you
+    type yourself is never hidden.
+
     Scan reminder: when a scan finishes its time is saved. At login, and every minute while
     you play, a chat reminder is printed if that is older than your reminder setting (30
     minutes to 12 hours), at most once per that interval.
@@ -27,6 +32,17 @@ local queue = {}          -- searches still to send: { guild = , class = , level
 local inflight            -- { search = , sentAt = } waiting for its answer
 local lastSent = -GAP     -- GetTime() of the last /who sent
 local setListening        -- defined below: whether key presses are watched for sending the queue
+local quietUntil = 0      -- result lines are hidden until this GetTime(), to cover an answer's last lines
+local tally = { found = 0, searches = 0, capped = false }   -- for the summary of a quiet scan
+
+local function quiet()
+    return not (ns.db and ns.db.scanChat)
+end
+
+-- Progress lines, only shown with /rb scanchat on.
+local function detail(msg)
+    if not quiet() then P(msg) end
+end
 
 function ns.WhoQuery(s)
     local q = ('g-"%s"'):format(s.guild)
@@ -87,8 +103,9 @@ function ns.ScanThrottled()
     table.insert(queue, 1, inflight.search)
     inflight = nil
     lastSent = GetTime()   -- the refusal restarts the server's timer
+    quietUntil = lastSent + 1
     setListening(true)
-    P(("the server allows one /who every few seconds; %d to go, sent as you play."):format(#queue))
+    detail(("the server allows one /who every few seconds; %d to go, sent as you play."):format(#queue))
 end
 
 local function remaining()
@@ -138,19 +155,30 @@ function ns.ScanResults(num, total)
     local s = inflight.search
     inflight = nil
     local count = math.max(num or 0, total or 0)
+    quietUntil = GetTime() + 1
+    tally.searches = tally.searches + 1
     if count >= CAP and not s.level then
-        local n = split(s)
-        P(("%s: %d online, more than one /who shows. Split by %s into %d searches. %s"):format(
+        local n = split(s)   -- its members are counted by the smaller searches
+        detail(("%s: %d online, more than one /who shows. Split by %s into %d searches. %s"):format(
             describe(s), count, s.class and "level" or "class", n, remaining()))
     elseif count >= CAP then
-        P(("%s: still %d online, some may be missed. %s"):format(describe(s), count, remaining()))
+        tally.found = tally.found + CAP
+        tally.capped = true
+        detail(("%s: still %d online, some may be missed. %s"):format(describe(s), count, remaining()))
     else
-        P(("%s: %d found. %s"):format(describe(s), count, remaining()))
+        tally.found = tally.found + count
+        detail(("%s: %d found. %s"):format(describe(s), count, remaining()))
     end
     if #queue == 0 then
         ns.db.lastScan = time()
         ns.Changed()
         setListening(false)
+        if quiet() then
+            P(("Scan finished: %d online member%s of blocked guilds found in %d search%s.%s"):format(
+                tally.found, tally.found == 1 and "" or "s", tally.searches, tally.searches == 1 and "" or "es",
+                tally.capped and " One search was still full, so a few may be missed." or ""))
+        end
+        tally = { found = 0, searches = 0, capped = false }
     else
         setListening(true)   -- split searches were queued
     end
@@ -208,10 +236,29 @@ function ns.Scan(guild)
     end
     local s = table.remove(queue, 1)
     if send(s) then
-        P(("looking up %s...%s"):format(describe(s), #queue > 0 and (" %d more will follow as you play."):format(#queue) or ""))
+        if quiet() then
+            P(("looking up %s%s. Results stay out of chat; a summary follows."):format(describe(s),
+                #queue > 0 and (" and %d more"):format(#queue) or ""))
+        else
+            P(("looking up %s...%s"):format(describe(s), #queue > 0 and (" %d more will follow as you play."):format(#queue) or ""))
+        end
     end
     if #queue == 0 then setListening(false) end
 end
+
+-- Keeps the game's /who result lines out of chat while one of the addon's searches is in
+-- flight. The addon's event handler still reads them; this only affects what is displayed.
+function ns.WhoChatFilter(frame, event, msg)
+    if not quiet() or type(msg) ~= "string" then return false end
+    if not (inflight or GetTime() < quietUntil) then return false end
+    local lower = msg:lower()
+    if msg:find("^|Hplayer:[^|]+|h.-|h: Level ") or msg:find("^%d+ players? total")
+        or (lower:find("/who", 1, true) and lower:find("wait", 1, true)) then
+        return true
+    end
+    return false
+end
+ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", ns.WhoChatFilter)
 
 ---------------------------------------------------------------------------
 -- Scan reminder

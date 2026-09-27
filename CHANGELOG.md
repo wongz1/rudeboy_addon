@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Scans are quiet: the game's `/who` result lines are kept out of chat while the addon's searches
+  run, and the addon prints one line at the start and a one-line summary at the end.
+  `/rb scanchat on` shows every step again.
+
 ## 0.1.5
 
 - Blocked players' speech bubbles are hidden in the open world (checkbox at the bottom of the
