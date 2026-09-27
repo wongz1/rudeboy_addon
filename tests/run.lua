@@ -128,7 +128,16 @@ local function boot(opts)
     _G.UnitFactionGroup = function() return opts.faction or "Horde" end
     _G.DeclineGroup = function() env.declined = env.declined + 1 end
     _G.StaticPopup_Hide = function() end
+    -- the game's Social window, which opens its Who list when it hears WHO_LIST_UPDATE
+    _G.FriendsFrame = mockFrame()
+    _G.FriendsFrame.events.WHO_LIST_UPDATE = true
+    _G.FriendsFrame.IsEventRegistered = function(self, e) return self.events[e] == true end
+    _G.FriendsFrame.UnregisterEvent = function(self, e) self.events[e] = nil end
+    _G.WhoFrame = mockFrame()
+    _G.WhoFrame.IsVisible = function() return env.whoWindowOpen or false end
+    _G.WhoFrame.IsEventRegistered = function() return false end
     _G.C_FriendList = {
+        SetWhoToUi = function(on) env.whoToUi = on end,
         SendWho = function(q) env.whoQuery = q end,
         GetNumWhoResults = function() return #env.who, env.whoTotal or #env.who end,
         GetWhoInfo = function(i) return env.who[i] end,
@@ -1270,6 +1279,37 @@ do
     again.slash("panel show")
     local r1 = again.ns.panel.rows[1]:GetText()
     check(r1 and r1:find("Loud Mouth"), "the names come back from the saved list")
+end
+
+---------------------------------------------------------------------------
+-- The game's Who window stays shut during the addon's searches
+---------------------------------------------------------------------------
+do
+    local env = boot({ quiet = true })
+    local ff = _G.FriendsFrame
+    env.slash("guild add Big Guild")
+    check(ff.events.WHO_LIST_UPDATE == nil and env.whoToUi == true, "while a search is in flight the Social window doesn't hear the answer")
+    env.whoAnswer(83, "Big Guild")
+    check(ff.events.WHO_LIST_UPDATE == true and env.whoToUi == false, "and hears /who answers again as soon as it has arrived")
+    check(env.ns.ScanPending() == 6 and env.ns.GuildOf("Member 1" .. 'g-"Big Guild"') == "Big Guild", "the answer was still read")
+
+    local hw = _G.RudeBoyHardwareFrame
+    hw.scripts.OnKeyDown(hw, "W")
+    check(ff.events.WHO_LIST_UPDATE == nil, "silenced again for the next search")
+    env.fire("CHAT_MSG_SYSTEM", "You must wait a moment before using /who again.")
+    check(ff.events.WHO_LIST_UPDATE == true, "handed back after a refusal")
+    env.now = env.now + 11
+    hw.scripts.OnKeyDown(hw, "W")
+    env.now = env.now + 11
+    hw.scripts.OnKeyDown(hw, "W")   -- no answer: times out and, the gap having passed, is sent again
+    check(ff.events.WHO_LIST_UPDATE == nil, "silenced for the resend")
+    env.whoAnswer(2, "Big Guild")
+    check(ff.events.WHO_LIST_UPDATE == true, "handed back after the answer")
+
+    -- with the Who window open by the player's own choice, nothing is touched
+    env.whoWindowOpen = true
+    hw.scripts.OnKeyDown(hw, "W")
+    check(env.whoQuery and ff.events.WHO_LIST_UPDATE == true and env.whoToUi == false, "your own open Who window keeps working")
 end
 
 realPrint(("%d passed, %d failed"):format(passed, failed))

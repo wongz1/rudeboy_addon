@@ -110,8 +110,40 @@ local function split(s)
     return #parts
 end
 
+-- While one of the addon's searches is in flight, its answer is taken directly and the game's
+-- Who window is kept from opening: the answer is asked for as an event rather than chat
+-- lines, and the frames that would show it stop listening for it. Everything is handed back
+-- as soon as the answer (or a refusal, or a timeout) arrives. If you have the Who window open
+-- yourself, nothing is changed.
+local silenced   -- frames whose WHO_LIST_UPDATE was switched off, to be switched back on
+
+local function whoWindowOpen()
+    return (WhoFrame and WhoFrame.IsVisible and WhoFrame:IsVisible()) and true or false
+end
+
+local function silenceWhoWindow()
+    if silenced or whoWindowOpen() then return end
+    silenced = {}
+    for _, frame in ipairs({ FriendsFrame, WhoFrame }) do
+        if frame and frame.IsEventRegistered and frame:IsEventRegistered("WHO_LIST_UPDATE") then
+            frame:UnregisterEvent("WHO_LIST_UPDATE")
+            silenced[#silenced + 1] = frame
+        end
+    end
+    if C_FriendList and C_FriendList.SetWhoToUi then pcall(C_FriendList.SetWhoToUi, true) end
+end
+
+local function restoreWhoWindow()
+    if not silenced then return end
+    for _, frame in ipairs(silenced) do pcall(frame.RegisterEvent, frame, "WHO_LIST_UPDATE") end
+    silenced = nil
+    if C_FriendList and C_FriendList.SetWhoToUi then pcall(C_FriendList.SetWhoToUi, false) end
+end
+ns.RestoreWhoWindow = restoreWhoWindow
+
 local function send(s)
     local q = ns.WhoQuery(s)
+    pcall(silenceWhoWindow)
     if C_FriendList and C_FriendList.SendWho then
         C_FriendList.SendWho(q)
     elseif SendWho then
@@ -134,6 +166,7 @@ function ns.ScanUnanswered()
     if not inflight then return end
     local s = inflight.search
     inflight = nil
+    pcall(restoreWhoWindow)
     s.tries = (s.tries or 1) + 1
     note("no answer to " .. ns.WhoQuery(s))
     if s.tries > MAX_TRIES then
@@ -153,6 +186,7 @@ function ns.ScanThrottled()
     if not inflight then return end
     local s = inflight.search
     inflight = nil
+    pcall(restoreWhoWindow)
     lastSent = GetTime()   -- the refusal restarts the server's timer
     quietUntil = lastSent + 1
     gap = math.min(gap + GAP_STEP, GAP_MAX)
@@ -218,6 +252,7 @@ function ns.ScanResults(num, total, finishOnly)
     if not inflight and not finishOnly then return end
     local s = inflight and inflight.search or { guild = "" }
     inflight = nil
+    pcall(restoreWhoWindow)
     local count = finishOnly and 0 or math.max(num or 0, total or 0)
     quietUntil = GetTime() + 1
     if not finishOnly then
