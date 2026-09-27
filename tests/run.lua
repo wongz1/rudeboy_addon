@@ -373,6 +373,29 @@ do
     end
     check(raw.ns.ParseWho("Some One has come online.") == nil and raw.ns.ParseWho("12 players in queue") == nil, "other system lines are not /who lines")
 
+    -- the server keeps refusing: the gap widens each time, and the queue still gets through
+    local slow = boot()
+    slow.slash("guild add Alpha")
+    local hw3 = _G.RudeBoyHardwareFrame
+    slow.fire("CHAT_MSG_SYSTEM", "You must wait a moment before using /who again.")
+    check(slow.ns.ScanState().gap == 10 and slow.ns.ScanPending() == 1, "a refusal widens the gap and keeps the search")
+    slow.whoQuery = nil
+    slow.now = slow.now + 7
+    hw3.scripts.OnKeyDown(hw3, "W")
+    check(slow.whoQuery == nil, "the wider gap is respected")
+    slow.now = slow.now + 4
+    hw3.scripts.OnKeyDown(hw3, "W")
+    check(slow.whoQuery == 'g-"Alpha"', "then the search goes out again")
+    for _ = 1, 5 do
+        slow.fire("CHAT_MSG_SYSTEM", "You must wait a moment before using /who again.")
+        slow.now = slow.now + 31
+        hw3.scripts.OnKeyDown(hw3, "W")
+    end
+    check(slow.ns.ScanPending() == 0 and slow.ns.ScanState().refusals == 6, "a search refused six times is skipped, so the queue can't stall")
+    slow.slash("debug")
+    check(table.concat(slow.prints, "\n"):find("scan: 0 queued, in flight none"), "/rb debug shows the scan's state")
+    check(slow.ns.db.scanState and slow.ns.db.scanState.last:find("refused"), "and the state is kept in the saved data")
+
     -- a search that never gets an answer is sent twice, then dropped
     local lost = boot()
     lost.slash("guild add Alpha")
@@ -404,12 +427,13 @@ do
     multi.slash("scan")
     check(multi.lastPrint():find("still waiting"), "won't send over an unanswered search")
     multi.fire("CHAT_MSG_SYSTEM", "You must wait a moment before using /who again.")
-    check(multi.lastPrint():find("to go, sent as you play"), "the server's wait message puts the search back and says so")
+    check(multi.lastPrint():find("refused a search for coming too soon; waiting 10 seconds") and multi.ns.ScanPending() == 2,
+        "the server's wait message puts the search back, widens the gap and says so")
     multi.ns.Scan("")   -- straight away, no time passing
     check(multi.lastPrint():find("every few seconds; %d queued"), "and a scan inside the gap just keeps the queue")
     multi.now = multi.now + 7
     multi.slash("scan")
-    check(multi.whoQuery == 'g-"Alpha"', "after the gap the dropped search goes out again")
+    check(multi.whoQuery == 'g-"Alpha"', "after the wider gap the dropped search goes out again")
     multi.slash("scan")
     check(multi.lastPrint():find("still waiting"), "(back to waiting for its answer)")
     multi.now = multi.now + 10
@@ -422,6 +446,7 @@ do
     check(multi.lastPrint():find("2 found") and multi.lastPrint():find("Scan finished"), "answers printed to chat count too")
 
     -- a guild added mid-scan goes to the front; the rest of the queue is kept
+    multi.now = multi.now + 5                 -- the gap is 10 seconds now
     multi.slash("scan")                       -- Alpha again (fresh queue: Alpha, Beta)
     multi.whoAnswer(1, "Alpha")
     multi.slash("guild add Delta")            -- Delta jumps the queue

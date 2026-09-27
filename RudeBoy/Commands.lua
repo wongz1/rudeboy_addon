@@ -211,6 +211,15 @@ local function printDebug()
                 quoted(UnitFullName and UnitFullName(unit)), ns.NormalizeName(ns.UnitFullName(unit))))
         end
     end
+    local st = ns.ScanState and ns.ScanState()
+    if st then
+        local hw = _G.RudeBoyHardwareFrame
+        P(("scan: %d queued, in flight %s (%ds), next %s, %ds since last sent, gap %ds"):format(
+            st.queued, st.inflight, st.inflightAge, st.next, st.sinceLastSent, st.gap))
+        P(("scan: %d key/click checks, %d sent, %d answered, %d refused; last: %s; keys %s"):format(
+            st.pumps, st.sent, st.answers, st.refusals, st.last,
+            hw and (hw.propagates and "watched" or "NOT watched (can't pass through)") or "not set up"))
+    end
     if ns.lastGuildInvite then
         P("last guild invite event: " .. quoted(unpack(ns.lastGuildInvite)) .. (DeclineGuild and " | DeclineGuild exists" or " | no DeclineGuild")
             .. ((C_GuildInfo and C_GuildInfo.DeclineGuild) and ", C_GuildInfo.DeclineGuild exists" or ""))

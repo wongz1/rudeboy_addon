@@ -9,6 +9,9 @@
     are counted and the lines are kept out of chat;
   - a search that gets no answer is tried twice and then skipped, instead of being re-sent
     without end.
+  - when the server refuses a search for coming too soon, the gap between searches widens (up to
+    30 seconds), and a search refused six times is skipped.
+- `/rb debug` shows where a scan stands.
 
 ## 0.1.6
 
