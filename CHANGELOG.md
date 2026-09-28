@@ -11,8 +11,8 @@
     without end.
   - when the server refuses a search for coming too soon, the gap between searches widens (up to
     30 seconds), and a search refused six times is skipped.
-- The game's Who window no longer opens for each of the addon's searches. A `/who` you type
-  yourself still opens it.
+- The "Looking For Group" window, where WoW Forever shows `/who` results, no longer opens for
+  each of the addon's searches. A `/who` you type yourself still opens it.
 - `/rb debug` shows where a scan stands.
 
 ## 0.1.6

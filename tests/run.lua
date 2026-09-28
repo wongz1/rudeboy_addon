@@ -1347,5 +1347,49 @@ do
     check(#env.closed == 2, "and is not closed")
 end
 
+---------------------------------------------------------------------------
+-- WoW Forever's Who list lives in the Looking For Group window
+---------------------------------------------------------------------------
+do
+        local function frameLike(name)
+            local f = { events = {}, scripts = {} }
+            f.RegisterEvent = function(self, e) self.events[e] = true end
+            _G[name] = f
+            return f
+        end
+        local fe = boot({ quiet = true })
+        _G.WhoFrame = nil
+        local parent = frameLike("LFGParentFrame")
+        parent.GetName = function() return "LFGParentFrame" end
+        parent.IsVisible = function() return fe.lfgOpen or false end
+        parent.events.WHO_LIST_UPDATE = true
+        parent.IsEventRegistered = function(self, e) return self.events[e] == true end
+        parent.UnregisterEvent = function(self, e) self.events[e] = nil end
+        local list = frameLike("LFGWhoListFrame")
+        list.IsVisible = function() return fe.lfgOpen and fe.whoTab or false end
+        list.GetParent = function() return parent end
+        parent.GetParent = function() return _G.UIParent end
+        _G.UIParent.GetChildren = function() return parent end
+        _G.HideUIPanel = function(frame) fe.closed[#fe.closed + 1] = frame fe.lfgOpen = false end
+
+        fe.slash("guild add Big Guild")
+        check(parent.events.WHO_LIST_UPDATE == nil, "the Looking For Group window doesn't hear the addon's search")
+        fe.lfgOpen, fe.whoTab = true, true
+        fe.hooks.ShowUIPanel(parent)
+        check(fe.closed[1] == parent and not fe.lfgOpen, "if it opens anyway, the Looking For Group window is closed")
+        fe.whoAnswer(3, "Big Guild")
+        check(parent.events.WHO_LIST_UPDATE == true, "and it hears /who answers again afterwards")
+
+        -- the player has it open on another tab: the addon leaves it alone
+        fe.lfgOpen, fe.whoTab = true, false
+        fe.slash("scan")
+        fe.whoTab = true
+        fe.hooks.ShowUIPanel(parent)
+        check(#fe.closed == 1 and fe.lfgOpen, "a Looking For Group window you had open yourself is not closed")
+        fe.whoAnswer(3, "Big Guild")
+        _G.UIParent.GetChildren = function() end
+        _G.LFGParentFrame, _G.LFGWhoListFrame = nil, nil
+    end
+
 realPrint(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

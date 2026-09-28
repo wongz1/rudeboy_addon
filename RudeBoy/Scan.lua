@@ -117,8 +117,18 @@ end
 -- yourself, nothing is changed.
 local silenced   -- frames whose WHO_LIST_UPDATE was switched off, to be switched back on
 
+-- The game's Who list: WhoFrame inside the Social window on older clients, LFGWhoListFrame
+-- inside the "Looking For Group" window (LFGParentFrame) on WoW Forever.
+local function whoList()
+    for _, name in ipairs({ "LFGWhoListFrame", "WhoFrame" }) do
+        local frame = _G[name]
+        if frame and frame.IsVisible then return frame end
+    end
+end
+
 local function whoWindowOpen()
-    return (WhoFrame and WhoFrame.IsVisible and WhoFrame:IsVisible()) and true or false
+    local list = whoList()
+    return (list and list:IsVisible()) and true or false
 end
 
 -- Second line of defence, for clients where the window opens some other way: while a search
@@ -163,9 +173,9 @@ local windowsAtSend = {}
 
 local function noteNewWindows()
     for name, frame in pairs(visibleWindows()) do
-        if not windowsAtSend[name] then
+        if not windowsAtSend[name] and name ~= "GameTooltip" then
             rememberPopup(frame, "appeared")
-            windowsAtSend[name] = true   -- once per search
+            windowsAtSend[name] = "new"   -- noted once per search
         end
     end
 end
@@ -173,12 +183,16 @@ end
 local function closeWhoWindow()
     pcall(noteNewWindows)
     if ns.db then
-        ns.db.scanWindowInfo = ("WhoFrame %s, FriendsFrame %s, WhoToUi api %s"):format(
-            WhoFrame and "exists" or "missing", FriendsFrame and "exists" or "missing",
+        ns.db.scanWindowInfo = ("WhoFrame %s, LFGWhoListFrame %s, FriendsFrame %s, WhoToUi api %s"):format(
+            WhoFrame and "exists" or "missing", LFGWhoListFrame and "exists" or "missing",
+            FriendsFrame and "exists" or "missing",
             (C_FriendList and C_FriendList.SetWhoToUi) and "exists" or "missing")
     end
     if openAtSend or not whoWindowOpen() then return end
-    local top = topPanel(WhoFrame)
+    local top = topPanel(whoList())
+    -- a window the player already had open (on another of its tabs) is theirs to close
+    local name = top.GetName and top:GetName()
+    if name and windowsAtSend[name] == "open" then return end
     rememberPopup(top, "closed")
     if HideUIPanel then pcall(HideUIPanel, top) end
     if top.IsShown and top:IsShown() then pcall(top.Hide, top) end
@@ -201,12 +215,13 @@ end
 
 local function silenceWhoWindow()
     windowsAtSend = {}
-    for name in pairs(visibleWindows()) do windowsAtSend[name] = true end
+    for name in pairs(visibleWindows()) do windowsAtSend[name] = "open" end
     openAtSend = whoWindowOpen()
     closer:Show()
     if silenced or openAtSend then return end
     silenced = {}
-    for _, frame in ipairs({ FriendsFrame, WhoFrame }) do
+    for _, name in ipairs({ "FriendsFrame", "WhoFrame", "LFGParentFrame", "LFGWhoListFrame" }) do
+        local frame = _G[name]
         if frame and frame.IsEventRegistered and frame:IsEventRegistered("WHO_LIST_UPDATE") then
             frame:UnregisterEvent("WHO_LIST_UPDATE")
             silenced[#silenced + 1] = frame
