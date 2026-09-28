@@ -242,6 +242,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
         ns.LoadDB()
         announce()
         if ns.InitPanel then ns.InitPanel() end
+        if ns.InitMinimap then ns.InitMinimap() end
         loginAt = GetTime()
         if not ns.loadedFromDisk then watchUntil = loginAt + 60 end
     elseif event == "PLAYER_ENTERING_WORLD" then

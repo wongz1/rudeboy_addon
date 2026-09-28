@@ -70,6 +70,13 @@ The Words tab never shows your words on its own: every entry reads `********` un
 **Show**, and they are masked again when you reopen the window or switch tabs. Adding or removing
 words from the window reports how many, not which.
 
+## The minimap button
+
+A button on the minimap opens the Rude Boy window with a left-click and shows or hides the
+on-screen panel with a right-click. Hovering it shows lines blocked, searches pending, and
+invites declined and warned about. Drag it around the minimap's edge to move it; `/rb minimap`
+hides or shows it.
+
 ## The on-screen panel
 
 A small panel you can park anywhere shows what Rude Boy has done: lines blocked in total and this
@@ -129,6 +136,8 @@ button brings it back. Its position is saved.
 /rb panel lock | unlock      fix it in place (clicks pass through) or let it be dragged
 /rb panel reset              back to its default position
 /rb panel recent             the fly-out with the last ten hidden lines
+/rb minimap [show | hide]    the minimap button
+/rb minimap reset            back to its default place
 /rb interval <seconds>       seconds between /who searches (2 to 30, default 6)
 /rb scanchat on | off        show every scan step and /who result in chat (off by default)
 /rb bubbles on | off         hide blocked players' chat bubbles in the open world (on by default)

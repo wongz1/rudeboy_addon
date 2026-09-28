@@ -89,6 +89,15 @@ local function boot(opts)
     _G.GameTooltip.GetUnit = function() return env.tooltipUnit and env.units[env.tooltipUnit].name, env.tooltipUnit end
     _G.GameTooltip.AddLine = function(self, text, r, g, b) self.lines[#self.lines + 1] = { text = text, r = r, g = g, b = b } end
     _G.GameTooltip.HasScript = function() return true end
+    _G.GameTooltip.SetText = function(self, text) self.lines = { { text = text } } end
+    _G.GameTooltip.AddDoubleLine = function(self, left, right) self.lines[#self.lines + 1] = { text = left .. ": " .. right } end
+    -- the minimap: 140 wide, centred at 1000,800; the cursor is wherever env.cursor says
+    _G.Minimap = mockFrame()
+    _G.Minimap.GetWidth = function() return 140 end
+    _G.Minimap.GetCenter = function() return 1000, 800 end
+    _G.Minimap.GetEffectiveScale = function() return 1 end
+    _G.GetCursorPosition = function() return env.cursor[1], env.cursor[2] end
+    env.cursor = { 0, 0 }
     _G.UIParent = mockFrame()
     _G.WorldFrame = mockFrame()
     _G.CreateFrame = function(_, name)
@@ -1535,6 +1544,63 @@ do
     check(table.concat(env.prints, "\n"):find("invites from blocked people: 3 declined, 3 warned about", 1, true), "/rb status shows them")
     local again = boot({ db = env.ns.db })
     check(again.ns.db.invites.declined == 3 and again.ns.db.invites.warned == 3, "the counts are saved")
+end
+
+---------------------------------------------------------------------------
+-- The minimap button
+---------------------------------------------------------------------------
+do
+    local env = boot()
+    local b = env.ns.minimapButton
+    check(b and b:IsShown(), "the minimap button is shown at login by default")
+    local function near(a, c) return math.abs(a - c) < 0.01 end
+    check(b.point[1] == "CENTER" and near(b.point[4], math.cos(math.rad(215)) * 75) and near(b.point[5], math.sin(math.rad(215)) * 75),
+        "on the minimap's edge, lower left")
+
+    env.slash("word add badword")
+    env.slash("player add Bad Actor")
+    env.filterRaw("CHAT_MSG_SAY", "a badword", "Loud Mouth", 1)
+    env.fire("PARTY_INVITE_REQUEST", "Bad Actor")
+    env.slash("guild add Big Guild")
+    b.scripts.OnEnter(b)
+    local lines = {}
+    for _, l in ipairs(_G.GameTooltip.lines) do lines[#lines + 1] = l.text end
+    local text = table.concat(lines, " / ")
+    check(lines[1] == "Rude Boy", "tooltip title")
+    check(text:find("Lines blocked: 1  (1 this session)", 1, true), "tooltip shows lines blocked")
+    check(text:find("Searches pending: 1", 1, true), "tooltip shows searches pending")
+    check(text:find("Invites declined: 0", 1, true) and text:find("Invites warned about: 1", 1, true), "tooltip shows invites declined and warned about")
+    check(text:find("Left-click: open the window", 1, true), "tooltip says what clicking does")
+    env.whoAnswer(1, "Big Guild")
+    b.scripts.OnEnter(b)
+    lines = {}
+    for _, l in ipairs(_G.GameTooltip.lines) do lines[#lines + 1] = l.text end
+    check(table.concat(lines, " / "):find("Searches pending: none", 1, true), "and none pending when the scan is done")
+
+    b.scripts.OnClick(b, "LeftButton")
+    check(env.ns.ui.frame and env.ns.ui.frame:IsShown(), "left-click opens the Rude Boy window")
+    b.scripts.OnClick(b, "LeftButton")
+    check(not env.ns.ui.frame:IsShown(), "and closes it again")
+    local panelShown = env.ns.panel:IsShown()
+    b.scripts.OnClick(b, "RightButton")
+    check(env.ns.panel:IsShown() ~= panelShown, "right-click shows or hides the panel")
+
+    -- dragging moves it around the edge and the place is saved
+    b.scripts.OnDragStart(b)
+    env.cursor = { 1000, 900 }             -- straight above the minimap's centre
+    b.scripts.OnUpdate(b)
+    b.scripts.OnDragStop(b)
+    check(near(env.ns.db.minimap.angle, 90) and near(b.point[4], 0) and near(b.point[5], 75), "dragged to the top of the minimap")
+    check(b.scripts.OnUpdate == nil, "and it stops following the cursor when released")
+
+    env.slash("minimap hide")
+    check(not b:IsShown() and env.ns.db.minimap.shown == false, "/rb minimap hide")
+    local again = boot({ db = env.ns.db })
+    check(again.ns.minimapButton == nil, "a hidden button stays hidden next session")
+    again.slash("minimap")
+    check(again.ns.minimapButton:IsShown() and near(again.ns.minimapButton.point[5], 75), "/rb minimap shows it where it was left")
+    again.slash("minimap reset")
+    check(near(again.ns.db.minimap.angle, 215), "/rb minimap reset")
 end
 
 realPrint(("%d passed, %d failed"):format(passed, failed))

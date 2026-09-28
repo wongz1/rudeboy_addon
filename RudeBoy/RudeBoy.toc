@@ -28,4 +28,5 @@ Tooltip.lua
 Bubbles.lua
 UI.lua
 Panel.lua
+Minimap.lua
 Commands.lua

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Minimap button: left-click opens the Rude Boy window, right-click shows or hides the panel,
+  and hovering shows lines blocked, searches pending, and invites declined and warned about.
+  Drag it around the minimap; `/rb minimap` hides or shows it.
+
 ## 0.1.7
 
 A big one. This release fixes a significant number of errors in how guild scans ran on WoW

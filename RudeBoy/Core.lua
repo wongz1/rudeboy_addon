@@ -18,6 +18,7 @@
         log          the last 100 hidden lines, oldest first (the window's Hidden tab)
         preview      show would-be-hidden lines with a tag instead of hiding them
         panel        { shown, locked, point, relativePoint, x, y } for the on-screen panel
+        minimap      { shown, angle } for the minimap button
         invites      { declined = n, warned = n }   party and guild invites from blocked people
         scanGap      seconds between /who searches (2 to 30)
         scanChat     show every step of a scan, and the game's /who lines, in chat
@@ -392,6 +393,7 @@ function ns.LoadDB()
     if db.bubbles == nil then db.bubbles = true end
     if db.scanChat == nil then db.scanChat = false end
     db.scanGap = tonumber(db.scanGap) or 6
+    if type(db.minimap) ~= "table" then db.minimap = { shown = true } end
     if type(db.invites) ~= "table" then db.invites = {} end
     db.invites.declined = db.invites.declined or 0
     db.invites.warned = db.invites.warned or 0
