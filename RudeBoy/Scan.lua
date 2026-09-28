@@ -142,7 +142,41 @@ local function rememberPopup(frame, how)
     list[name .. " (" .. how .. ")"] = (list[name .. " (" .. how .. ")"] or 0) + 1
 end
 
+-- Which top-level windows are on screen, by name. Compared before and after a search to find
+-- the one the game opened for its answer, whatever it is called on this client.
+local function visibleWindows()
+    local set = {}
+    if not (UIParent and UIParent.GetChildren) then return set end
+    for _, child in ipairs({ UIParent:GetChildren() }) do
+        local ok, shown = pcall(function()
+            return child.IsVisible and child:IsVisible() and not (child.IsForbidden and child:IsForbidden())
+        end)
+        if ok and shown then
+            local name = child.GetName and child:GetName()
+            if name then set[name] = child end
+        end
+    end
+    return set
+end
+
+local windowsAtSend = {}
+
+local function noteNewWindows()
+    for name, frame in pairs(visibleWindows()) do
+        if not windowsAtSend[name] then
+            rememberPopup(frame, "appeared")
+            windowsAtSend[name] = true   -- once per search
+        end
+    end
+end
+
 local function closeWhoWindow()
+    pcall(noteNewWindows)
+    if ns.db then
+        ns.db.scanWindowInfo = ("WhoFrame %s, FriendsFrame %s, WhoToUi api %s"):format(
+            WhoFrame and "exists" or "missing", FriendsFrame and "exists" or "missing",
+            (C_FriendList and C_FriendList.SetWhoToUi) and "exists" or "missing")
+    end
     if openAtSend or not whoWindowOpen() then return end
     local top = topPanel(WhoFrame)
     rememberPopup(top, "closed")
@@ -166,6 +200,8 @@ if hooksecurefunc and ShowUIPanel then
 end
 
 local function silenceWhoWindow()
+    windowsAtSend = {}
+    for name in pairs(visibleWindows()) do windowsAtSend[name] = true end
     openAtSend = whoWindowOpen()
     closer:Show()
     if silenced or openAtSend then return end

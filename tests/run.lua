@@ -1321,6 +1321,20 @@ do
         if f.scripts.OnUpdate and f ~= env.events and f ~= env.ns.reminderFrame and f ~= env.ns.bubbleWatcher then f.scripts.OnUpdate(f, 0.1) end
     end
     check(#env.closed == 2 and env.whoWindowOpen == false, "also when it shows just after the answer")
+    -- a window of any name that shows up during a search is recorded
+    local odd = {}
+    odd.GetName = function() return "LookingForGroupThing" end
+    odd.IsVisible = function() return env.oddShown or false end
+    _G.UIParent.GetChildren = function() return odd end
+    env.now = env.now + 11
+    hw.scripts.OnKeyDown(hw, "W")
+    env.oddShown = true
+    env.whoAnswer(2, "Big Guild")
+    check(env.ns.db.scanPopups["LookingForGroupThing (appeared)"] == 1, "a window that appears during a search is recorded by name")
+    env.slash("debug")
+    check(table.concat(env.prints, "\n"):find("windows seen during searches: .*LookingForGroupThing"), "and /rb debug lists it")
+    _G.UIParent.GetChildren = function() end
+
     local popups = env.ns.db.scanPopups or {}
     local names = {}
     for k in pairs(popups) do names[#names + 1] = k end

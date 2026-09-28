@@ -220,6 +220,13 @@ local function printDebug()
             st.pumps, st.sent, st.answers, st.refusals, st.last,
             hw and (hw.propagates and "watched" or "NOT watched (can't pass through)") or "not set up"))
     end
+    if ns.db.scanPopups then
+        local names = {}
+        for name, n in pairs(ns.db.scanPopups) do names[#names + 1] = ("%s x%d"):format(name, n) end
+        table.sort(names)
+        P("windows seen during searches: " .. (#names > 0 and table.concat(names, ", ") or "none"))
+        P("  " .. tostring(ns.db.scanWindowInfo))
+    end
     if ns.lastGuildInvite then
         P("last guild invite event: " .. quoted(unpack(ns.lastGuildInvite)) .. (DeclineGuild and " | DeclineGuild exists" or " | no DeclineGuild")
             .. ((C_GuildInfo and C_GuildInfo.DeclineGuild) and ", C_GuildInfo.DeclineGuild exists" or ""))
