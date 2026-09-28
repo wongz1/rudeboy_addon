@@ -1453,5 +1453,51 @@ do
     check(env.whoQuery == 'g-"Big Guild"', "the buttons still work when the panel is locked")
 end
 
+---------------------------------------------------------------------------
+-- The panel's Recent fly-out
+---------------------------------------------------------------------------
+do
+    local env = boot()
+    local panel = env.ns.panel
+    check(env.ns.flyout == nil, "the fly-out is not built, let alone shown, until asked for")
+    panel.recent:Click()
+    local fly = env.ns.flyout
+    check(fly and fly:IsShown() and fly.text:GetText() == "Nothing has been hidden yet.", "Recent opens it, empty at first")
+
+    env.slash("word add badword")
+    env.slash("player add Bad Actor")
+    for i = 1, 12 do env.filterRaw("CHAT_MSG_CHANNEL", "line " .. i .. " badword", "Loud Mouth", 100 + i, "Trade") end
+    env.filterRaw("CHAT_MSG_SAY", "psst", "Bad Actor", 200)
+    local text = fly.text:GetText():gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+    local paragraphs = {}
+    for para in (text .. "\n\n"):gmatch("(.-)\n\n") do paragraphs[#paragraphs + 1] = para end
+    check(#paragraphs == 10, "it shows the last ten lines")
+    check(paragraphs[1] == "12:00  [say]  Bad Actor: psst  (player list)", "newest first, in full, with who and why")
+    check(paragraphs[2] == "12:00  [Trade]  Loud Mouth: line 12 badword  (word)", "the message is shown unmasked; the reason never names the word list entry")
+    check(paragraphs[10]:find("line 4 badword"), "and updates live as lines are hidden")
+
+    fly.close:Click()
+    check(not fly:IsShown(), "its x closes it")
+    env.slash("panel recent")
+    check(fly:IsShown(), "/rb panel recent opens it")
+    panel.close:Click()
+    check(not fly:IsShown() and not panel:IsShown(), "hiding the panel hides the fly-out too")
+
+    -- placement: beside the panel on the side with room
+    env.slash("panel show")
+    panel.GetRight = function() return 1500 end
+    _G.UIParent.GetRight = function() return 1600 end
+    panel.recent:Click()
+    check(fly.point[1] == "TOPRIGHT" and fly.point[3] == "TOPLEFT", "near the right edge it opens to the left")
+    panel.GetRight = function() return 300 end
+    panel.recent:Click()
+    panel.recent:Click()
+    check(fly.point[1] == "TOPLEFT" and fly.point[3] == "TOPRIGHT", "otherwise to the right")
+    _G.UIParent.GetRight = nil
+
+    local again = boot({ db = env.ns.db })
+    check(again.ns.flyout == nil, "it starts closed again next session")
+end
+
 realPrint(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

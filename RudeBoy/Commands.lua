@@ -31,6 +31,7 @@
     /rb panel [show | hide]      the small on-screen panel: lines blocked and who was blocked
     /rb panel lock | unlock      fix it in place (clicks pass through) or let it be dragged
     /rb panel reset              back to its default position
+    /rb panel recent             the fly-out with the last ten hidden lines
     /rb interval <seconds>       seconds between /who searches (2 to 30, default 6)
     /rb scanchat on | off        show every scan step and /who result in chat (off by default)
     /rb bubbles on | off         hide blocked players' chat bubbles in the open world (on by default)
@@ -337,6 +338,9 @@ SlashCmdList["RUDEBOY"] = function(input)
         elseif action == "reset" then
             ns.ResetPanel()
             P("panel back at its default position, unlocked.")
+        elseif action == "recent" then
+            if not ns.db.panel.shown then ns.SetPanelShown(true) end
+            ns.ToggleRecent()
         else
             local show = (action == "show") or (action ~= "hide" and not ns.db.panel.shown)
             ns.SetPanelShown(show)
