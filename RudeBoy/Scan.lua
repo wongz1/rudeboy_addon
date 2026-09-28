@@ -24,17 +24,32 @@ local P = ns.Print
 
 local CAP = 50            -- the most people one /who shows
 local TIMEOUT = 8         -- seconds to wait for an answer before sending the search again
-local GAP = 6             -- seconds between searches to begin with
-local GAP_STEP = 4        -- added each time the server refuses a search for coming too soon
-local GAP_MAX = 30
+local GAP = 6             -- default seconds between searches; the player's setting is db.scanGap
+local GAP_MIN, GAP_MAX = 2, 30
+local GAP_STEP = 4        -- added for the rest of a scan each time the server refuses a search
 local MAX_REFUSALS = 6    -- a search refused this many times is skipped
 local CHUNK = 10          -- levels per search when a guild is first split
 local MAX_TRIES = 2       -- a search with no recognisable answer is dropped after this many sends
 
 local queue = {}          -- searches still to send: { guild = , lo = , hi = , tries = }
 local inflight            -- { search = , sentAt = } waiting for its answer
-local gap = GAP           -- the current gap; grows when the server says "wait"
-local lastSent = -GAP     -- GetTime() of the last /who sent
+local extraGap = 0        -- seconds added by refusals, until the scan finishes
+local lastSent = -GAP_MAX -- GetTime() of the last /who sent
+
+-- Seconds to leave between searches right now: the player's setting, plus any back-off.
+local function currentGap()
+    local base = (ns.db and tonumber(ns.db.scanGap)) or GAP
+    return math.min(base + extraGap, GAP_MAX)
+end
+
+ns.SCAN_GAP_MIN, ns.SCAN_GAP_MAX = GAP_MIN, GAP_MAX
+
+function ns.SetScanGap(seconds)
+    local n = math.floor((tonumber(seconds) or GAP) + 0.5)
+    ns.db.scanGap = math.max(GAP_MIN, math.min(GAP_MAX, n))
+    ns.Changed()
+    return ns.db.scanGap
+end
 local stats = { pumps = 0, sent = 0, answers = 0, refusals = 0, last = "idle" }   -- for /rb debug
 local remaining           -- defined below
 local setListening        -- defined below: whether key presses are watched for sending the queue
@@ -59,7 +74,7 @@ function ns.ScanState()
         inflightAge = inflight and math.floor(now - inflight.sentAt) or 0,
         next = queue[1] and ns.WhoQuery(queue[1]) or "none",
         sinceLastSent = math.floor(now - lastSent),
-        gap = gap,
+        gap = currentGap(),
         pumps = stats.pumps, sent = stats.sent, answers = stats.answers, refusals = stats.refusals,
         last = stats.last,
     }
@@ -288,7 +303,8 @@ function ns.ScanThrottled()
     pcall(restoreWhoWindow)
     lastSent = GetTime()   -- the refusal restarts the server's timer
     quietUntil = lastSent + 1
-    gap = math.min(gap + GAP_STEP, GAP_MAX)
+    extraGap = extraGap + GAP_STEP
+    local gap = currentGap()
     stats.refusals = stats.refusals + 1
     s.refused = (s.refused or 0) + 1
     note(("refused %s, gap now %ds"):format(ns.WhoQuery(s), gap))
@@ -328,7 +344,7 @@ local function pump()
         if GetTime() - inflight.sentAt < TIMEOUT then return end
         ns.ScanUnanswered()
     end
-    if GetTime() - lastSent < gap then return end
+    if GetTime() - lastSent < currentGap() then return end
     local s = table.remove(queue, 1)
     if not s then setListening(false) return end
     send(s)
@@ -382,6 +398,7 @@ function ns.ScanResults(num, total, finishOnly)
                 tally.dropped > 0 and (" %d got no answer."):format(tally.dropped) or ""))
         end
         tally = { found = 0, searches = 0, capped = false, dropped = 0 }
+        extraGap = 0   -- the next scan starts from the player's setting again
     else
         setListening(true)   -- split searches were queued
     end
@@ -408,7 +425,7 @@ function ns.Scan(guild)
     local busy
     if inflight and GetTime() - inflight.sentAt < TIMEOUT then
         busy = "still waiting for the last /who answer"
-    elseif GetTime() - lastSent < gap then
+    elseif GetTime() - lastSent < currentGap() then
         busy = "the server allows one /who every few seconds"
     elseif inflight then
         ns.ScanUnanswered()

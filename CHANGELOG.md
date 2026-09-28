@@ -13,6 +13,8 @@
     30 seconds), and a search refused six times is skipped.
 - The "Looking For Group" window, where WoW Forever shows `/who` results, no longer opens for
   each of the addon's searches. A `/who` you type yourself still opens it.
+- The time between searches can be set from 2 to 30 seconds (window, or `/rb interval`).
+- The panel has **Scan** and **Settings** buttons.
 - `/rb debug` shows where a scan stands.
 
 ## 0.1.6

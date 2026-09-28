@@ -242,6 +242,10 @@ function ns.RefreshUI()
     ui.reminder:SetText("Remind me to scan every " .. ns.FormatInterval(minutes))
     if minutes > ns.REMINDER_MIN then ui.less:Enable() else ui.less:Disable() end
     if minutes < ns.REMINDER_MAX then ui.more:Enable() else ui.more:Disable() end
+    local gap = ns.db.scanGap
+    ui.gap:SetText(("Send a queued search every %d second%s"):format(gap, gap == 1 and "" or "s"))
+    if gap > ns.SCAN_GAP_MIN then ui.gapLess:Enable() else ui.gapLess:Disable() end
+    if gap < ns.SCAN_GAP_MAX then ui.gapMore:Enable() else ui.gapMore:Disable() end
     ui.lastScan:SetText(ns.db.lastScan and ("Last scan: %s ago"):format(ns.FormatAge(time() - ns.db.lastScan))
         or "Last scan: never")
 end
@@ -400,7 +404,7 @@ local function build()
     ui.frame = f
     -- height: list ends at 400, three rows of checkboxes to 510, reminder row to 540,
     -- then the two-line lifetime text above the bottom edge
-    f:SetSize(430, 616)
+    f:SetSize(430, 642)
     f:SetPoint("CENTER")
     f:SetFrameStrata("DIALOG")
     f:SetClampedToScreen(true)
@@ -578,6 +582,14 @@ local function build()
     ui.reminder:SetPoint("TOPLEFT", 82, reminderY - 5)
     ui.lastScan = fontString(f, "GameFontDisableSmall")
     ui.lastScan:SetPoint("TOPRIGHT", -28, reminderY - 5)
+
+    local gapY = reminderY - 26
+    ui.gapLess = button(f, "-", 24, function() ns.SetScanGap(ns.db.scanGap - 1) end)
+    ui.gapLess:SetPoint("TOPLEFT", 24, gapY)
+    ui.gapMore = button(f, "+", 24, function() ns.SetScanGap(ns.db.scanGap + 1) end)
+    ui.gapMore:SetPoint("TOPLEFT", 50, gapY)
+    ui.gap = fontString(f)
+    ui.gap:SetPoint("TOPLEFT", 82, gapY - 5)
 
     ui.hidden = fontString(f, "GameFontHighlightSmall")
     ui.hidden:SetPoint("BOTTOMLEFT", 26, 14)

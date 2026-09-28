@@ -74,7 +74,8 @@ words from the window reports how many, not which.
 
 A small panel you can park anywhere shows what Rude Boy has done: lines blocked in total and this
 session, how many `/who` searches are still pending, and the eight most recently blocked players with how many of their lines were hidden and
-why (their guild, "player list", or "word"; never the word itself). Drag it to move. **Lock** fixes
+why (their guild, "player list", or "word"; never the word itself). **Scan** starts a scan of
+everything on your lists and **Settings** opens the main window. Drag it to move. **Lock** fixes
 it in place and lets clicks pass through it; **x** hides it. `/rb panel` or the window's **Panel**
 button brings it back. Its position is saved.
 
@@ -124,6 +125,7 @@ button brings it back. Its position is saved.
 /rb panel [show | hide]      the on-screen panel: lines blocked and who was blocked
 /rb panel lock | unlock      fix it in place (clicks pass through) or let it be dragged
 /rb panel reset              back to its default position
+/rb interval <seconds>       seconds between /who searches (2 to 30, default 6)
 /rb scanchat on | off        show every scan step and /who result in chat (off by default)
 /rb bubbles on | off         hide blocked players' chat bubbles in the open world (on by default)
 /rb preview on | off         leave would-be-hidden lines in chat with a grey tag, for testing
@@ -166,6 +168,10 @@ ranges of ten levels, and a range that is still full is halved until it fits. Th
 addon send `/who` from inside a key press or mouse click, so the queued searches go out from
 whatever keys and clicks you make while playing, about six seconds apart, until it says
 "Scan finished". `/rb scan <guild>` does just that guild. Online members are hidden from then on.
+
+Searches go out six seconds apart by default. The `-` / `+` row at the bottom of the window, or
+`/rb interval <seconds>`, sets that anywhere from 2 to 30 seconds. If the server refuses a search
+for coming too soon, the addon slows down for the rest of that scan.
 
 Scans are quiet: the game's `/who` result lines are kept out of chat while the addon's searches
 run, and you get one line when a scan starts and a one-line summary when it ends. `/rb scanchat on`

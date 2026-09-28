@@ -1391,5 +1391,67 @@ do
         _G.LFGParentFrame, _G.LFGWhoListFrame = nil, nil
     end
 
+---------------------------------------------------------------------------
+-- Search interval, and the panel's Scan and Settings buttons
+---------------------------------------------------------------------------
+do
+    local env = boot()
+    check(env.ns.db.scanGap == 6, "searches are six seconds apart by default")
+    env.slash("interval 3")
+    check(env.ns.db.scanGap == 3 and env.lastPrint():find("every 3 seconds"), "/rb interval sets it")
+    check(env.ns.SetScanGap(1) == 2 and env.ns.SetScanGap(99) == 30 and env.ns.SetScanGap(4.6) == 5, "kept between 2 and 30, whole seconds")
+    env.ns.SetScanGap(3)
+
+    env.slash("guild add Big Guild")
+    env.whoAnswer(90, "Big Guild")
+    local hw = _G.RudeBoyHardwareFrame
+    env.now = env.now - 7   -- undo the answer's time jump, to measure from the send
+    env.whoQuery = nil
+    env.now = env.now + 2
+    hw.scripts.OnKeyDown(hw, "W")
+    check(env.whoQuery == nil, "not sooner than the interval")
+    env.now = env.now + 1.5
+    hw.scripts.OnKeyDown(hw, "W")
+    check(env.whoQuery == 'g-"Big Guild" 1-10', "a search goes out once the interval has passed")
+
+    env.fire("CHAT_MSG_SYSTEM", "You must wait a moment before using /who again.")
+    check(env.ns.ScanState().gap == 7 and env.ns.db.scanGap == 3, "a refusal slows this scan down without changing your setting")
+    for _ = 1, 8 do
+        env.now = env.now + 31
+        hw.scripts.OnKeyDown(hw, "W")
+        env.whoAnswer(1, "Big Guild")
+    end
+    check(env.ns.ScanPending() == 0 and env.ns.ScanState().gap == 3, "the next scan starts from your setting again")
+
+    -- the window
+    env.slash("")
+    local ui = env.ns.ui
+    check(ui.gap:GetText() == "Send a queued search every 3 seconds", "the window shows the interval")
+    ui.gapLess:Click()
+    check(env.ns.db.scanGap == 2 and not ui.gapLess.enabled, "- goes down to 2 seconds and stops")
+    ui.gapMore:Click()
+    ui.gapMore:Click()
+    check(env.ns.db.scanGap == 4 and ui.gap:GetText() == "Send a queued search every 4 seconds", "+ raises it")
+    env.slash("")
+
+    -- the panel
+    local panel = env.ns.panel
+    env.whoQuery = nil
+    env.now = env.now + 31
+    panel.scan:Click()
+    check(env.whoQuery == 'g-"Big Guild"' and env.ns.ScanPending() == 1, "the panel's Scan button starts a scan")
+    env.whoAnswer(1, "Big Guild")
+    check(not ui.frame:IsShown(), "(settings window closed)")
+    panel.settings:Click()
+    check(ui.frame:IsShown(), "the panel's Settings button opens the window")
+    panel.settings:Click()
+    check(not ui.frame:IsShown(), "and closes it again")
+    env.slash("panel lock")
+    env.whoQuery = nil
+    env.now = env.now + 31
+    panel.scan:Click()
+    check(env.whoQuery == 'g-"Big Guild"', "the buttons still work when the panel is locked")
+end
+
 realPrint(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)
