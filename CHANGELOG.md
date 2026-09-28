@@ -14,6 +14,8 @@
 - The "Looking For Group" window, where WoW Forever shows `/who` results, no longer opens for
   each of the addon's searches. A `/who` you type yourself still opens it.
 - The time between searches can be set from 2 to 30 seconds (window, or `/rb interval`).
+- The panel counts invites from blocked people: how many were declined, and how many you were
+  warned about. Party and guild invites are counted together.
 - The panel has **Scan**, **Settings** and **Recent** buttons. Recent opens a fly-out with the
   last ten hidden lines in full.
 - `/rb debug` shows where a scan stands.

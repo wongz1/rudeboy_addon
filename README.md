@@ -73,7 +73,8 @@ words from the window reports how many, not which.
 ## The on-screen panel
 
 A small panel you can park anywhere shows what Rude Boy has done: lines blocked in total and this
-session, how many `/who` searches are still pending, and the eight most recently blocked players with how many of their lines were hidden and
+session, how many `/who` searches are still pending, how many invites from blocked people were
+declined or only warned about, and the eight most recently blocked players with how many of their lines were hidden and
 why (their guild, "player list", or "word"; never the word itself). **Scan** starts a scan of
 everything on your lists, **Settings** opens the main window, and **Recent** opens a fly-out with
 the last ten hidden lines in full, so you can check what you missed. The fly-out starts closed

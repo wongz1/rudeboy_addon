@@ -1,6 +1,7 @@
 --[[
     Panel.lua - a small panel showing what Rude Boy has done: how many lines it has blocked,
-    how many /who searches are still pending, and who was blocked most recently and why.
+    how many /who searches are still pending, how many invites from blocked people it has
+    declined or warned about, and who was blocked most recently and why.
     Informative only.
 
     Scan starts a scan of everything on your lists; Settings opens the main window; Recent
@@ -166,6 +167,10 @@ function ns.RefreshPanel()
         and ("Searches pending: |cffffd100%d|r  (sent as you play)"):format(pending)
         or "Searches pending: |cff999999none|r")
 
+    local inv = ns.db.invites
+    panel.invites:SetText(("Invites: |cffffd100%s|r declined, |cffffd100%s|r warned"):format(
+        commas(inv.declined), commas(inv.warned)))
+
     local list = ns.RecentlyBlocked(NAMES)
     for i, row in ipairs(panel.rows) do
         local e = list[i]
@@ -177,13 +182,13 @@ function ns.RefreshPanel()
         end
     end
     if #list == 0 then panel.empty:Show() else panel.empty:Hide() end
-    panel:SetHeight(100 + math.max(1, #list) * LINE + 10)
+    panel:SetHeight(114 + math.max(1, #list) * LINE + 10)
 end
 
 local function build()
     panel = CreateFrame("Frame", "RudeBoyPanel", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
     ns.panel = panel
-    panel:SetSize(WIDTH, 100 + LINE + 10)
+    panel:SetSize(WIDTH, 114 + LINE + 10)
     panel:SetFrameStrata("MEDIUM")
     panel:SetClampedToScreen(true)
     panel:RegisterForDrag("LeftButton")
@@ -252,20 +257,23 @@ local function build()
     panel.pending:SetPoint("TOPLEFT", 10, -66)
 
     local heading = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    heading:SetPoint("TOPLEFT", 10, -82)
+    panel.invites = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    panel.invites:SetPoint("TOPLEFT", 10, -80)
+
+    heading:SetPoint("TOPLEFT", 10, -96)
     heading:SetText("Recently blocked:")
 
     panel.rows = {}
     for i = 1, NAMES do
         local row = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        row:SetPoint("TOPLEFT", 10, -96 - (i - 1) * LINE)
+        row:SetPoint("TOPLEFT", 10, -110 - (i - 1) * LINE)
         row:SetWidth(WIDTH - 20)
         row:SetJustifyH("LEFT")
         if row.SetWordWrap then row:SetWordWrap(false) end
         panel.rows[i] = row
     end
     panel.empty = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    panel.empty:SetPoint("TOPLEFT", 10, -96)
+    panel.empty:SetPoint("TOPLEFT", 10, -110)
     panel.empty:SetText("Nobody yet.")
 
     panel:SetScript("OnShow", ns.RefreshPanel)

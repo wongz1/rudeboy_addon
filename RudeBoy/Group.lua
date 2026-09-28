@@ -136,8 +136,10 @@ local function onInvite(inviter, guid)
         DeclineGroup()
         if StaticPopup_Hide then StaticPopup_Hide("PARTY_INVITE") end
         ns.Alert(("Declined a group invite from %s (%s)."):format(inviter, why))
+        ns.CountInvite("declined")
     else
         ns.Alert(("%s is inviting you to a group (%s)."):format(inviter, why))
+        ns.CountInvite("warned")
     end
 end
 
@@ -152,6 +154,16 @@ local function declineGuildInvite()
     if GuildInviteFrame and GuildInviteFrame.Hide then pcall(GuildInviteFrame.Hide, GuildInviteFrame) end
     return ok
 end
+
+-- Invite statistics, for the panel: party and guild invites together.
+local function countInvite(what)
+    local inv = ns.db.invites
+    inv[what] = (inv[what] or 0) + 1
+    ns.sessionInvites = ns.sessionInvites or { declined = 0, warned = 0 }
+    ns.sessionInvites[what] = ns.sessionInvites[what] + 1
+    ns.Changed()
+end
+ns.CountInvite = countInvite
 
 -- A guild invite is blocked if the inviter is on your lists, or the guild itself is. The
 -- guild name is normally the second value; any later string that is on your list counts too.
@@ -173,11 +185,14 @@ local function onGuildInvite(...)
     if ns.db.declineGuild then
         if declineGuildInvite() then
             ns.Alert(("Declined a guild invite from %s (%s)."):format(who, why))
+            ns.CountInvite("declined")
         else
             ns.Alert(("%s is inviting you to their guild (%s). This client gives no way to decline it for you."):format(who, why))
+            ns.CountInvite("warned")
         end
     else
         ns.Alert(("%s is inviting you to their guild (%s)."):format(who, why))
+        ns.CountInvite("warned")
     end
 end
 

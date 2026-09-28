@@ -1499,5 +1499,43 @@ do
     check(again.ns.flyout == nil, "it starts closed again next session")
 end
 
+---------------------------------------------------------------------------
+-- Invite statistics
+---------------------------------------------------------------------------
+do
+    local env = boot()
+    local panel = env.ns.panel
+    local function invites() return (panel.invites:GetText():gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")) end
+    check(invites() == "Invites: 0 declined, 0 warned", "starts at nothing")
+    env.slash("player add Bad Actor")
+    env.slash("guild add Streamer Army")
+    env.whoAnswer(1, "Streamer Army")
+
+    env.fire("PARTY_INVITE_REQUEST", "Bad Actor")
+    env.fire("GUILD_INVITE_REQUEST", "Nice Person", "Streamer Army")
+    check(invites() == "Invites: 0 declined, 2 warned", "with declining off, party and guild invites count as warned")
+    env.fire("PARTY_INVITE_REQUEST", "Nice Person")
+    env.fire("GUILD_INVITE_REQUEST", "Nice Person", "Nice Guild")
+    check(invites() == "Invites: 0 declined, 2 warned", "invites from anyone else aren't counted")
+
+    _G.DeclineGuild = function() end
+    env.slash("decline party on")
+    env.slash("decline guild on")
+    env.fire("PARTY_INVITE_REQUEST", "Bad Actor")
+    env.fire("GUILD_INVITE_REQUEST", "Bad Actor", "Some Guild")
+    env.fire("GUILD_INVITE_REQUEST", "Nice Person", "Streamer Army")
+    check(invites() == "Invites: 3 declined, 2 warned", "with declining on they count as declined")
+
+    _G.DeclineGuild = nil
+    _G.C_GuildInfo = nil
+    env.fire("GUILD_INVITE_REQUEST", "Nice Person", "Streamer Army")
+    check(invites() == "Invites: 3 declined, 3 warned", "an invite the client can't decline counts as warned")
+
+    env.slash("status")
+    check(table.concat(env.prints, "\n"):find("invites from blocked people: 3 declined, 3 warned about", 1, true), "/rb status shows them")
+    local again = boot({ db = env.ns.db })
+    check(again.ns.db.invites.declined == 3 and again.ns.db.invites.warned == 3, "the counts are saved")
+end
+
 realPrint(("%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

@@ -83,6 +83,7 @@ local function printStatus()
         ns.VERSION, onOff(db.enabled), onOff(db.alerts), onOff(db.autoDecline), onOff(db.declineGuild)))
     P(("%d words, %d players, %d guilds filtered. Guilds known for %d players."):format(
         count(db.words), count(db.players), count(db.guilds), count(db.known)))
+    P(("invites from blocked people: %d declined, %d warned about."):format(db.invites.declined, db.invites.warned))
     P(("hidden %d lines this session, %d lifetime (%d by word, %d player, %d guild) since %s."):format(
         ns.hiddenSession, db.hiddenTotal, db.hiddenByKind.word, db.hiddenByKind.player, db.hiddenByKind.guild,
         db.countingSince))
