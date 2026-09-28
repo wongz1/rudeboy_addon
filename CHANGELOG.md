@@ -2,23 +2,49 @@
 
 ## 0.1.7
 
-- Fixed scans getting stuck with searches pending and "0 players total" repeating in chat:
-  - big guilds are now split by level range instead of class (class filters return nothing on
-    WoW Forever);
-  - the game's `/who` lines are recognised in the form the game actually sends them, so answers
-    are counted and the lines are kept out of chat;
+A big one. This release fixes a significant number of errors in how guild scans ran on WoW
+Forever, makes the addon much easier to live with day to day, and turns the on-screen panel
+into a command center for everything Rude Boy does.
+
+### New: the command center
+
+The on-screen panel is now the place to run and check the addon without opening the settings:
+
+- **Scan** starts a scan of every guild and keyword on your lists.
+- **Settings** opens the main window.
+- **Recent** opens a fly-out with the last ten hidden lines in full (who said it, where, and why
+  it was hidden), so you can check what you missed. It starts closed every session.
+- Live statistics: lines blocked (lifetime and this session), `/who` searches still pending, and
+  invites from blocked people **declined** and **warned about**.
+- The most recently blocked players, with how many of their lines were hidden and the reason.
+- Drag it anywhere, lock it in place (clicks pass through a locked panel), and it remembers
+  where you put it.
+
+### Fixed
+
+- **Scans no longer get stuck.** Searches could sit at "pending" for ever while "0 players total"
+  repeated in chat. Three causes, all fixed:
+  - big guilds are split by level range instead of class, because class filters return nothing
+    on WoW Forever;
+  - the game's `/who` answers are recognised in the form the game actually sends them, so every
+    answer is counted;
   - a search that gets no answer is tried twice and then skipped, instead of being re-sent
     without end.
-  - when the server refuses a search for coming too soon, the gap between searches widens (up to
-    30 seconds), and a search refused six times is skipped.
-- The "Looking For Group" window, where WoW Forever shows `/who` results, no longer opens for
-  each of the addon's searches. A `/who` you type yourself still opens it.
-- The time between searches can be set from 2 to 30 seconds (window, or `/rb interval`).
-- The panel counts invites from blocked people: how many were declined, and how many you were
-  warned about. Party and guild invites are counted together.
-- The panel has **Scan**, **Settings** and **Recent** buttons. Recent opens a fly-out with the
-  last ten hidden lines in full.
-- `/rb debug` shows where a scan stands.
+- **The "Looking For Group" window no longer pops up** for each of the addon's searches. WoW
+  Forever shows `/who` results there. A `/who` you type yourself still opens it, and a window you
+  opened yourself is left alone.
+- **`/who` text stays out of your chat** during scans, including the lines the earlier version
+  missed.
+- If the server refuses a search for coming too soon, the addon slows down for the rest of that
+  scan rather than retrying at the same pace.
+
+### Quality of life
+
+- Scans run themselves: press Scan once and the searches go out as you play.
+- The time between searches is adjustable from 2 to 30 seconds (bottom of the settings window, or
+  `/rb interval <seconds>`), so large communities can be scanned faster.
+- One line when a scan starts and one summary when it ends, instead of a line per search.
+- `/rb debug` shows where a scan stands, for troubleshooting.
 
 ## 0.1.6
 
