@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.8
 
 - Minimap button: left-click opens the Rude Boy window, right-click shows or hides the panel,
   and hovering shows lines blocked, searches pending, and invites declined and warned about.
