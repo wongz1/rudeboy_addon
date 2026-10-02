@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.9 (2026-10-02)
+## 0.1.9
 
 A visual pass: every window now uses a flat, ElvUI-like skin. Nothing about what the addon
 does, its commands or its saved settings has changed.
