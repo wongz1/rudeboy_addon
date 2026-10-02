@@ -7,9 +7,14 @@
 
     /rb minimap            show or hide the button
     /rb minimap reset      back to its default place
+
+    Look: a 20px flat square in the skin from Skin.lua, the icon inset by 2px, the border in the
+    accent colour while hovered.
 ]]
 
 local ADDON, ns = ...
+
+local S = ns.Skin
 
 local ICON = "Interface\\Icons\\Spell_Holy_Silence"
 local DEFAULT_ANGLE = 215      -- degrees, counter-clockwise from the right; lower left
@@ -67,30 +72,20 @@ local function followCursor()
 end
 
 local function build()
-    button = CreateFrame("Button", "RudeBoyMinimapButton", Minimap)
+    button = CreateFrame("Button", "RudeBoyMinimapButton", Minimap, S.template())
     ns.minimapButton = button
-    button:SetSize(31, 31)
+    button:SetSize(20, 20)
     button:SetFrameStrata("MEDIUM")
     button:SetFrameLevel(8)
     button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     button:RegisterForDrag("LeftButton")
-    if button.SetHighlightTexture then button:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight") end
-
-    local background = button:CreateTexture(nil, "BACKGROUND")
-    background:SetSize(20, 20)
-    background:SetPoint("TOPLEFT", 7, -5)
-    background:SetTexture("Interface\\Minimap\\UI-Minimap-Background")
+    S.skin(button, S.COLOR.panel)   -- a flat square with a 1px border; the accent colour while hovered
 
     local icon = button:CreateTexture(nil, "ARTWORK")
-    icon:SetSize(18, 18)
-    icon:SetPoint("TOPLEFT", 7, -6)
+    icon:SetPoint("TOPLEFT", button, "TOPLEFT", 2, -2)
+    icon:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -2, 2)
     icon:SetTexture(ICON)
     if icon.SetTexCoord then icon:SetTexCoord(0.08, 0.92, 0.08, 0.92) end
-
-    local border = button:CreateTexture(nil, "OVERLAY")
-    border:SetSize(53, 53)
-    border:SetPoint("TOPLEFT")
-    border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
 
     button:SetScript("OnClick", function(_, mouseButton)
         if mouseButton == "RightButton" then
@@ -99,8 +94,14 @@ local function build()
             ns.ToggleUI()
         end
     end)
-    button:SetScript("OnEnter", showTooltip)
-    button:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    button:SetScript("OnEnter", function(self)
+        S.setBorder(self, S.accent())
+        showTooltip(self)
+    end)
+    button:SetScript("OnLeave", function(self)
+        S.plainBorder(self)
+        if GameTooltip then GameTooltip:Hide() end
+    end)
     button:SetScript("OnDragStart", function(self)
         if GameTooltip then GameTooltip:Hide() end
         self:SetScript("OnUpdate", followCursor)

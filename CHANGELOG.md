@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.1.9 (2026-10-02)
+
+A visual pass: every window now uses a flat, ElvUI-like skin. Nothing about what the addon
+does, its commands or its saved settings has changed.
+
+- **No Blizzard frame art.** The window, the on-screen panel, its Recent fly-out and the minimap
+  button are flat dark panels with a 1px black border (one screen pixel at any UI scale), in
+  place of the gold dialog and tooltip borders.
+- **Title strips.** Each window has a 20px strip across the top with its name on the left and a
+  flat `x` on the right. The main window's strip also holds the lifetime count, **About** and
+  **Panel**; the panel's holds **Lock**.
+- **Flat controls.** Tabs are a row of flat buttons, the current one pressed in with the accent
+  border (your class colour, or a muted cyan). Every other button, the input box and all check
+  boxes are flat too; a checked box fills with the accent colour. Hovering a button or focusing
+  the input box lights its border in the accent colour.
+- **Lists.** Entries sit on a panel with every other row a shade lighter. Each row's Remove
+  button is a small `x` at the right edge; the Blocked tab keeps its worded Exempt, Unexempt and
+  Remove buttons.
+- **Text.** Names and values are light grey; hints, notes, counts, the page, the last scan and
+  the lifetime summary are dim grey. The game's own fonts throughout.
+- **Tighter.** 8px window margins, 2 to 4px between controls, 18px rows; the window sizes itself
+  from its contents, so it is shorter than before.
+- **Minimap button.** A 20px flat square with the icon inset, instead of the round button; its
+  border takes the accent colour while hovered. Click, drag and tooltip are unchanged.
+
 ## 0.1.8
 
 - Minimap button: left-click opens the Rude Boy window, right-click shows or hides the panel,

@@ -53,18 +53,21 @@ can stay or go.
 
 ## The window
 
-Type `/rb` to open it (again, or Escape, to close). It has a tab each for **Words**, **Players**
-and **Guilds**: type into the box and press Add (or Enter), and each entry has a Remove button.
-Players and Guilds also have **Add target**, and Guilds has **Scan** (see below).
+Type `/rb` to open it (again, or Escape, to close). It is a flat dark window in an ElvUI-like
+style: a title strip across the top with the name, the lifetime count, **About**, **Panel** and
+an `x`, then a row of tabs for **Words**, **Players** and **Guilds** (the current tab is pressed
+in, outlined in your class colour). Type into the box and press Add (or Enter), and each entry
+has a small `x` to remove it. Players and Guilds also have **Add target**, and Guilds has
+**Scan** (see below).
 
 The **Blocked** tab lists every person being blocked and why: on your player list, or a member
 of a guild on your guild list (otherwise you can't see who the guild filter is catching). Press
 **Exempt** on a row to let that person through anyway, for someone you get on with in a guild you
 block. Exempt people stay at the top of the tab with an **Unexempt** button. Words still apply to
-what they say. Checkboxes at
-the bottom turn chat hiding, warnings, declining of party and guild invites, and bubble hiding on
-and off, and `-` / `+` set
-the scan reminder. **About** explains what the addon does and why guild lists need regular scans.
+what they say. Flat check boxes at the bottom (filled in your class colour when on) turn chat
+hiding, warnings, declining of party and guild invites, and bubble hiding on and off, and `-` /
+`+` set the scan reminder. **About** in the title strip explains what the addon does and why
+guild lists need regular scans.
 
 The Words tab never shows your words on its own: every entry reads `********` until you press
 **Show**, and they are masked again when you reopen the window or switch tabs. Adding or removing
@@ -72,21 +75,22 @@ words from the window reports how many, not which.
 
 ## The minimap button
 
-A button on the minimap opens the Rude Boy window with a left-click and shows or hides the
-on-screen panel with a right-click. Hovering it shows lines blocked, searches pending, and
-invites declined and warned about. Drag it around the minimap's edge to move it; `/rb minimap`
-hides or shows it.
+A small flat square button on the minimap's edge (its border lights up in your class colour
+when hovered) opens the Rude Boy window with a left-click and shows or hides the on-screen panel
+with a right-click. Hovering it shows lines blocked, searches pending, and invites declined and
+warned about. Drag it around the minimap's edge to move it; `/rb minimap` hides or shows it.
 
 ## The on-screen panel
 
-A small panel you can park anywhere shows what Rude Boy has done: lines blocked in total and this
-session, how many `/who` searches are still pending, how many invites from blocked people were
-declined or only warned about, and the eight most recently blocked players with how many of their lines were hidden and
-why (their guild, "player list", or "word"; never the word itself). **Scan** starts a scan of
-everything on your lists, **Settings** opens the main window, and **Recent** opens a fly-out with
-the last ten hidden lines in full, so you can check what you missed. The fly-out starts closed
-every session. Drag it to move. **Lock** fixes
-it in place and lets clicks pass through it; **x** hides it. `/rb panel` or the window's **Panel**
+A small flat panel you can park anywhere, in the same style as the window, shows what Rude Boy
+has done: lines blocked in total and this session, how many `/who` searches are still pending,
+how many invites from blocked people were declined or only warned about, and the eight most
+recently blocked players with how many of their lines were hidden and why (their guild, "player
+list", or "word"; never the word itself). Under its title strip, **Scan** starts a scan of
+everything on your lists, **Settings** opens the main window, and **Recent** opens a fly-out
+beside it with the last ten hidden lines in full, so you can check what you missed. The fly-out
+starts closed every session. Drag the panel to move it. **Lock** in the title strip fixes it in
+place and lets clicks pass through it; **x** hides it. `/rb panel` or the window's **Panel**
 button brings it back. Its position is saved.
 
 ## Checking what was hidden

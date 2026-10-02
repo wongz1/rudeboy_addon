@@ -14,15 +14,25 @@
     /rb panel                 show or hide
     /rb panel lock | unlock
     /rb panel reset           back to the default position, unlocked
+
+    Look: the flat skin from Skin.lua. A title strip with the name, Lock and x; flat Scan,
+    Settings and Recent buttons; light text for the counts and names, dim headings. The
+    fly-out is the same: a title strip with an x over the wrapped text.
 ]]
 
 local ADDON, ns = ...
+
+local S = ns.Skin
 
 local NAMES = 8           -- names listed
 local RECENT = 10         -- hidden lines shown in the fly-out
 local FLY_WIDTH = 380
 local WIDTH = 230
 local LINE = 14
+local PAD = S.PAD         -- 8: the margin inside the panel
+local TITLE_H = S.TITLE_H -- 20: the title strip
+local BTN_H = 18
+local ROWS_TOP = TITLE_H + 6 + BTN_H + 6 + 3 * LINE + 2 + LINE + 2   -- where the first name row starts
 
 local panel
 local flyout
@@ -99,7 +109,7 @@ local function refreshFlyout()
     if not (flyout and flyout:IsShown()) then return end
     flyout.text:SetText(ns.RecentLinesText(RECENT))
     local h = flyout.text.GetStringHeight and flyout.text:GetStringHeight()
-    flyout:SetHeight(44 + (tonumber(h) or 160))
+    flyout:SetHeight(TITLE_H + 6 + (tonumber(h) or 160) + PAD)
 
     -- beside the panel, on whichever side has room
     flyout:ClearAllPoints()
@@ -113,35 +123,20 @@ local function refreshFlyout()
 end
 
 local function buildFlyout()
-    flyout = CreateFrame("Frame", "RudeBoyRecent", panel, BackdropTemplateMixin and "BackdropTemplate" or nil)
+    flyout = CreateFrame("Frame", "RudeBoyRecent", panel, S.template())
     ns.flyout = flyout
     flyout:SetSize(FLY_WIDTH, 200)
     flyout:SetFrameStrata("MEDIUM")
     flyout:EnableMouse(true)
-    local bg = flyout:CreateTexture(nil, "BACKGROUND")
-    bg:SetPoint("TOPLEFT", 3, -3)
-    bg:SetPoint("BOTTOMRIGHT", -3, 3)
-    if bg.SetColorTexture then bg:SetColorTexture(0.07, 0.07, 0.08, 1) else bg:SetTexture(0.07, 0.07, 0.08, 1) end
-    if flyout.SetBackdrop then
-        flyout:SetBackdrop({
-            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-            tile = true, tileSize = 16, edgeSize = 14,
-            insets = { left = 3, right = 3, top = 3, bottom = 3 },
-        })
-    end
-    local title = flyout:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    title:SetPoint("TOPLEFT", 10, -9)
-    title:SetText(("Last %d hidden lines"):format(RECENT))
-    local close = CreateFrame("Button", nil, flyout, "UIPanelButtonTemplate")
-    close:SetSize(20, 18)
-    close:SetPoint("TOPRIGHT", -7, -6)
-    close:SetText("x")
-    close:SetScript("OnClick", function() flyout:Hide() end)
-    flyout.close = close
+    S.skin(flyout, S.COLOR.window)
 
-    flyout.text = flyout:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    flyout.text:SetPoint("TOPLEFT", 10, -32)
-    flyout.text:SetWidth(FLY_WIDTH - 20)
+    local strip = S.titleStrip(flyout, ("Last %d hidden lines"):format(RECENT), function() flyout:Hide() end)
+    flyout.titleBar = strip
+    flyout.close = strip.close
+
+    flyout.text = S.text(flyout, "")
+    flyout.text:SetPoint("TOPLEFT", flyout, "TOPLEFT", PAD, -(TITLE_H + 6))
+    flyout.text:SetWidth(FLY_WIDTH - 2 * PAD)
     flyout.text:SetJustifyH("LEFT")
     flyout.text:SetJustifyV("TOP")
     if flyout.text.SetWordWrap then flyout.text:SetWordWrap(true) end
@@ -182,13 +177,13 @@ function ns.RefreshPanel()
         end
     end
     if #list == 0 then panel.empty:Show() else panel.empty:Hide() end
-    panel:SetHeight(114 + math.max(1, #list) * LINE + 10)
+    panel:SetHeight(ROWS_TOP + math.max(1, #list) * LINE + PAD)
 end
 
 local function build()
-    panel = CreateFrame("Frame", "RudeBoyPanel", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
+    panel = CreateFrame("Frame", "RudeBoyPanel", UIParent, S.template())
     ns.panel = panel
-    panel:SetSize(WIDTH, 114 + LINE + 10)
+    panel:SetSize(WIDTH, ROWS_TOP + LINE + PAD)
     panel:SetFrameStrata("MEDIUM")
     panel:SetClampedToScreen(true)
     panel:RegisterForDrag("LeftButton")
@@ -197,84 +192,64 @@ local function build()
         self:StopMovingOrSizing()
         savePosition()
     end)
+    S.skin(panel, S.COLOR.window)
 
-    -- opaque, like the main window
-    local bg = panel:CreateTexture(nil, "BACKGROUND")
-    bg:SetPoint("TOPLEFT", 3, -3)
-    bg:SetPoint("BOTTOMRIGHT", -3, 3)
-    if bg.SetColorTexture then bg:SetColorTexture(0.07, 0.07, 0.08, 1) else bg:SetTexture(0.07, 0.07, 0.08, 1) end
-    if panel.SetBackdrop then
-        panel:SetBackdrop({
-            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-            tile = true, tileSize = 16, edgeSize = 14,
-            insets = { left = 3, right = 3, top = 3, bottom = 3 },
-        })
-    end
+    -- title strip: the name, Lock and x
+    local strip = S.titleStrip(panel, "Rude Boy", function() ns.SetPanelShown(false) end)
+    panel.titleBar = strip
+    panel.close = strip.close
 
-    local title = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    title:SetPoint("TOPLEFT", 10, -9)
-    title:SetText("Rude Boy")
-
-    local close = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
-    close:SetSize(20, 18)
-    close:SetPoint("TOPRIGHT", -7, -6)
-    close:SetText("x")
-    close:SetScript("OnClick", function() ns.SetPanelShown(false) end)
-    panel.close = close
-
-    local lock = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
-    lock:SetSize(58, 18)
-    lock:SetPoint("RIGHT", close, "LEFT", -3, 0)
-    lock:SetScript("OnClick", function() ns.SetPanelLocked(not ns.db.panel.locked) end)
+    local lock = S.button(strip, "Lock", 44, function() ns.SetPanelLocked(not ns.db.panel.locked) end)
+    lock:SetHeight(TITLE_H - 4)
+    lock:SetPoint("RIGHT", strip.close, "LEFT", -2, 0)
     panel.lock = lock
 
     -- second row: actions
-    local scan = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
-    scan:SetSize(66, 18)
-    scan:SetPoint("TOPLEFT", 9, -28)
-    scan:SetText("Scan")
-    scan:SetScript("OnClick", function() ns.Scan("") end)   -- a click, so the first /who may go out
+    local y = -(TITLE_H + 6)
+    local width = math.floor((WIDTH - 2 * PAD - 4) / 3)
+    local scan = S.button(panel, "Scan", width, function() ns.Scan("") end)   -- a click, so the first /who may go out
+    scan:SetHeight(BTN_H)
+    scan:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD, y)
     panel.scan = scan
 
-    local settings = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
-    settings:SetSize(66, 18)
-    settings:SetPoint("LEFT", scan, "RIGHT", 4, 0)
-    settings:SetText("Settings")
-    settings:SetScript("OnClick", function() ns.ToggleUI() end)
+    local settings = S.button(panel, "Settings", width, function() ns.ToggleUI() end)
+    settings:SetHeight(BTN_H)
+    settings:SetPoint("LEFT", scan, "RIGHT", 2, 0)
     panel.settings = settings
 
-    local recent = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
-    recent:SetSize(66, 18)
-    recent:SetPoint("LEFT", settings, "RIGHT", 4, 0)
-    recent:SetText("Recent")
-    recent:SetScript("OnClick", function() ns.ToggleRecent() end)
+    local recent = S.button(panel, "Recent", width, function() ns.ToggleRecent() end)
+    recent:SetHeight(BTN_H)
+    recent:SetPoint("LEFT", settings, "RIGHT", 2, 0)
     panel.recent = recent
+    y = y - BTN_H - 6
 
-    panel.total = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    panel.total:SetPoint("TOPLEFT", 10, -52)
+    panel.total = S.text(panel, "")
+    panel.total:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD, y)
+    y = y - LINE
 
-    panel.pending = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    panel.pending:SetPoint("TOPLEFT", 10, -66)
+    panel.pending = S.text(panel, "")
+    panel.pending:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD, y)
+    y = y - LINE
 
-    local heading = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    panel.invites = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    panel.invites:SetPoint("TOPLEFT", 10, -80)
+    panel.invites = S.text(panel, "")
+    panel.invites:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD, y)
+    y = y - LINE - 2
 
-    heading:SetPoint("TOPLEFT", 10, -96)
-    heading:SetText("Recently blocked:")
+    local heading = S.dim(panel, "Recently blocked:")
+    heading:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD, y)
+    y = y - LINE - 2   -- now at -ROWS_TOP
 
     panel.rows = {}
     for i = 1, NAMES do
-        local row = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        row:SetPoint("TOPLEFT", 10, -110 - (i - 1) * LINE)
-        row:SetWidth(WIDTH - 20)
+        local row = S.text(panel, "")
+        row:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD, y - (i - 1) * LINE)
+        row:SetWidth(WIDTH - 2 * PAD)
         row:SetJustifyH("LEFT")
         if row.SetWordWrap then row:SetWordWrap(false) end
         panel.rows[i] = row
     end
-    panel.empty = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    panel.empty:SetPoint("TOPLEFT", 10, -110)
-    panel.empty:SetText("Nobody yet.")
+    panel.empty = S.dim(panel, "Nobody yet.")
+    panel.empty:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD, y)
 
     panel:SetScript("OnShow", ns.RefreshPanel)
     panel:Hide()

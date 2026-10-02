@@ -100,8 +100,11 @@ local function boot(opts)
     env.cursor = { 0, 0 }
     _G.UIParent = mockFrame()
     _G.WorldFrame = mockFrame()
-    _G.CreateFrame = function(_, name)
+    -- the template a frame was created with is recorded so the tests can check none of the
+    -- Blizzard frame art templates are used any more
+    _G.CreateFrame = function(kind, name, _, template)
         local f = mockFrame(name)
+        f.kind, f.template = kind, template
         env.frames[#env.frames + 1] = f
         return f
     end
@@ -891,6 +894,30 @@ do
         local hint = ui.hint:GetText() or ""
         check(#hint <= 66, ("tab %d hint fits one line (%d chars): %s"):format(i, #hint, hint))
     end
+end
+
+---------------------------------------------------------------------------
+-- The flat skin: no Blizzard frame art anywhere
+---------------------------------------------------------------------------
+do
+    local env = boot()
+    env.slash("")                       -- the window
+    env.ns.ui.aboutButton:Click()       -- and About
+    env.ns.panel.recent:Click()         -- the panel is up already; this builds the fly-out
+    check(env.ns.ui.frame and env.ns.ui.about:IsShown() and env.ns.flyout and env.ns.minimapButton,
+        "every window, the fly-out and the minimap button are built")
+    local removed = { "UIPanelButtonTemplate", "UIPanelCloseButton", "UICheckButtonTemplate", "InputBoxTemplate",
+        "BasicFrameTemplate", "UI-DialogBox-Border", "UI-Tooltip-Border" }
+    local offenders, frames = {}, 0
+    for _, f in ipairs(env.frames) do
+        frames = frames + 1
+        for _, t in ipairs(removed) do
+            if f.template and tostring(f.template):find(t, 1, true) then offenders[#offenders + 1] = t end
+        end
+    end
+    check(frames > 50 and #offenders == 0, "no frame is created with a Blizzard art template (" .. table.concat(offenders, ", ") .. ")")
+    check(env.ns.ui.close and env.ns.ui.titleBar and env.ns.panel.titleBar and env.ns.flyout.titleBar, "each window has a title strip with its x")
+    check(env.ns.ui.frame.height and env.ns.ui.frame.height > 400, "the window's height comes from its layout")
 end
 
 ---------------------------------------------------------------------------
