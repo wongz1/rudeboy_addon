@@ -13,12 +13,12 @@
         exempt       { [normalized name] = "Shown Name" }   let through despite player/guild lists
         hiddenTotal  lifetime count of hidden lines; hiddenByKind splits it by word/player/guild
         countingSince  the date the lifetime count started
-        lastScan     time() the last /rb scan finished
+        lastScan     time() a /who search last answered (a scan need not finish)
         reminderMinutes  remind to scan when lastScan is older than this (30 to 720)
         log          the last 100 hidden lines, oldest first (the window's Hidden tab)
         preview      show would-be-hidden lines with a tag instead of hiding them
         panel        { shown, locked, point, relativePoint, x, y } for the on-screen panel
-        minimap      { shown, angle } for the minimap button
+        minimap      { shown, angle, shape } for the minimap button; shape is auto, round or square
         invites      { declined = n, warned = n }   party and guild invites from blocked people
         scanGap      seconds between /who searches (2 to 30)
         scanChat     show every step of a scan, and the game's /who lines, in chat
@@ -32,7 +32,7 @@
 ]]
 
 local ADDON, ns = ...
-ns.VERSION = "0.1.9"
+ns.VERSION = "0.1.10"
 
 -- True when Saved.lua (see the .toc) has already put the last save in place. The client's own
 -- loading, when it works, happens later, at ADDON_LOADED.
@@ -394,6 +394,7 @@ function ns.LoadDB()
     if db.scanChat == nil then db.scanChat = false end
     db.scanGap = tonumber(db.scanGap) or 6
     if type(db.minimap) ~= "table" then db.minimap = { shown = true } end
+    if db.minimap.shape ~= "round" and db.minimap.shape ~= "square" then db.minimap.shape = "auto" end
     if type(db.invites) ~= "table" then db.invites = {} end
     db.invites.declined = db.invites.declined or 0
     db.invites.warned = db.invites.warned or 0

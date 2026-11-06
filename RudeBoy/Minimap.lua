@@ -5,8 +5,17 @@
     Hovering shows lines blocked, searches pending and invites declined or warned about.
     Drag it around the minimap's edge; where you leave it is saved.
 
-    /rb minimap            show or hide the button
-    /rb minimap reset      back to its default place
+    /rb minimap                          show or hide the button
+    /rb minimap reset                    back to its default place
+    /rb minimap round | square | auto    the shape of the minimap it sits around
+
+    Round puts the button on the circle just outside a round minimap. Square puts it on the
+    square just outside a square one, in the same direction from the centre. Auto, the default,
+    asks the interface: an addon that squares the minimap says so through the global function
+    GetMinimapShape() ("SQUARE" or "ROUND"), and may say how much room it has taken above,
+    below, left and right of the map through GetMinimapEdgeInsets(); the button then sits
+    clear of that. With neither function there, auto means round. The button looks again once
+    a second, so it follows the map when another addon changes it.
 
     Look: a 20px flat square in the skin from Skin.lua, the icon inset by 2px, the border in the
     accent colour while hovered.
@@ -18,8 +27,11 @@ local S = ns.Skin
 
 local ICON = "Interface\\Icons\\Spell_Holy_Silence"
 local DEFAULT_ANGLE = 215      -- degrees, counter-clockwise from the right; lower left
+local SHAPES = { auto = true, round = true, square = true }
+local NEXT_SHAPE = { auto = "round", round = "square", square = "auto" }
 
-local button
+local button, watcher
+local placed            -- what the last placement was worked out from, to notice a change
 ns.minimapButton = nil
 
 -- What the tooltip shows, as { left, right } pairs. Also used by the tests.
@@ -53,11 +65,63 @@ local function showTooltip(self)
     GameTooltip:Show()
 end
 
+-- "round" or "square": the setting, or with auto what the interface says.
+function ns.MinimapShape()
+    local want = ns.db.minimap.shape
+    if want == "round" or want == "square" then return want end
+    if type(GetMinimapShape) == "function" then
+        local ok, shape = pcall(GetMinimapShape)
+        if ok and shape == "SQUARE" then return "square" end
+    end
+    return "round"
+end
+
+-- The room another addon has taken above, below, left and right of a square minimap.
+local function insets()
+    if type(GetMinimapEdgeInsets) ~= "function" then return 0, 0, 0, 0 end
+    local function n(v) return type(v) == "number" and v > 0 and v or 0 end
+    local ok, top, bottom, left, right = pcall(GetMinimapEdgeInsets)
+    if not ok then return 0, 0, 0, 0 end
+    return n(top), n(bottom), n(left), n(right)
+end
+
+-- Everything a placement depends on other than the angle.
+local function layout()
+    local width = Minimap.GetWidth and Minimap:GetWidth()
+    if type(width) ~= "number" or width <= 0 then width = 140 end
+    local shape = ns.MinimapShape()
+    if shape == "square" then return shape, width, insets() end
+    return shape, width, 0, 0, 0, 0
+end
+
+-- The button's centre, from the minimap's centre: on the circle just outside a round map, on
+-- the square just outside a square one.
+local function offset(angle, shape, width, top, bottom, left, right)
+    local x, y = math.cos(angle), math.sin(angle)
+    if shape ~= "square" then
+        local radius = width / 2 + 5
+        return x * radius, y * radius
+    end
+    local half = width / 2 + 12
+    local m = math.max(math.abs(x), math.abs(y))
+    x, y = x / m * half, y / m * half
+    if y >= half - 0.001 then y = y + top elseif y <= -half + 0.001 then y = y - bottom end
+    if x >= half - 0.001 then x = x + right elseif x <= -half + 0.001 then x = x - left end
+    return x, y
+end
+
 local function place()
-    local angle = math.rad(ns.db.minimap.angle or DEFAULT_ANGLE)
-    local radius = ((Minimap.GetWidth and Minimap:GetWidth()) or 140) / 2 + 5
+    local shape, width, top, bottom, left, right = layout()
+    local angle = math.rad(tonumber(ns.db.minimap.angle) or DEFAULT_ANGLE)
+    local x, y = offset(angle, shape, width, top, bottom, left, right)
     button:ClearAllPoints()
-    button:SetPoint("CENTER", Minimap, "CENTER", math.cos(angle) * radius, math.sin(angle) * radius)
+    button:SetPoint("CENTER", Minimap, "CENTER", x, y)
+    placed = table.concat({ shape, width, top, bottom, left, right }, ":")
+end
+
+-- Once a second: has the minimap changed shape or size since the button was put there?
+local function look()
+    if placed ~= table.concat({ layout() }, ":") then place() end
 end
 
 -- While dragging, the button follows the cursor's direction from the minimap's centre.
@@ -109,6 +173,16 @@ local function build()
     button:SetScript("OnDragStop", function(self)
         self:SetScript("OnUpdate", nil)
     end)
+
+    -- A child of the button, so it only runs while the button is shown.
+    watcher = CreateFrame("Frame", "RudeBoyMinimapWatcher", button)
+    local elapsed = 0
+    watcher:SetScript("OnUpdate", function(_, dt)
+        elapsed = elapsed + (type(dt) == "number" and dt or 0)
+        if elapsed < 1 then return end
+        elapsed = 0
+        look()
+    end)
 end
 
 function ns.SetMinimapShown(shown)
@@ -126,6 +200,26 @@ end
 function ns.ResetMinimap()
     ns.db.minimap.angle = DEFAULT_ANGLE
     ns.SetMinimapShown(true)
+end
+
+function ns.NextMinimapShape()
+    return NEXT_SHAPE[ns.db.minimap.shape] or "auto"
+end
+
+-- "auto", "round" or "square"; anything else is refused.
+function ns.SetMinimapShape(shape)
+    if not SHAPES[shape] then return false end
+    ns.db.minimap.shape = shape
+    if button then place() end
+    if ns.RefreshUI then ns.RefreshUI() end
+    return true
+end
+
+-- "Minimap: auto (round now)", for the window's button.
+function ns.MinimapShapeLabel()
+    local shape = ns.db.minimap.shape
+    if shape == "auto" then return ("Minimap: auto (%s now)"):format(ns.MinimapShape()) end
+    return "Minimap: " .. tostring(shape)
 end
 
 -- Called at login, once the settings are in place.

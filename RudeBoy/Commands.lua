@@ -34,6 +34,8 @@
     /rb panel recent             the fly-out with the last ten hidden lines
     /rb minimap [show | hide]    the minimap button
     /rb minimap reset            back to its default place
+    /rb minimap round | square | auto
+                                 the shape of the minimap it sits around (auto follows the minimap)
     /rb interval <seconds>       seconds between /who searches (2 to 30, default 6)
     /rb scanchat on | off        show every scan step and /who result in chat (off by default)
     /rb bubbles on | off         hide blocked players' chat bubbles in the open world (on by default)
@@ -61,6 +63,7 @@ local HELP = {
     "/rb panel [show | hide | lock | unlock | reset] - the on-screen panel",
     "/rb interval <seconds, 2 to 30> - how often a queued /who search is sent",
     "/rb minimap [show | hide | reset] - the minimap button",
+    "/rb minimap round | square | auto - the shape of the minimap the button sits around",
     "/rb log [clear] - the last hidden lines,  /rb preview on | off - tag lines instead of hiding",
     "/rb test <text> - would it be hidden?,  /rb debug - how the game writes names",
 }
@@ -354,6 +357,13 @@ SlashCmdList["RUDEBOY"] = function(input)
         if action == "reset" then
             ns.ResetMinimap()
             P("minimap button back at its default place.")
+        elseif action == "auto" or action == "round" or action == "square" then
+            ns.SetMinimapShape(action)
+            if action == "auto" then
+                P(("minimap button follows the minimap's shape (%s right now)."):format(ns.MinimapShape()))
+            else
+                P(("minimap button sits around a %s minimap. /rb minimap auto follows the minimap's shape."):format(action))
+            end
         else
             local show = (action == "show") or (action ~= "hide" and not ns.db.minimap.shown)
             ns.SetMinimapShown(show)

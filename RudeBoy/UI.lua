@@ -257,6 +257,7 @@ function ns.RefreshUI()
     ui.checks.autoDecline:SetChecked(ns.db.autoDecline)
     ui.checks.declineGuild:SetChecked(ns.db.declineGuild)
     ui.checks.bubbles:SetChecked(ns.db.bubbles)
+    if ns.MinimapShapeLabel then ui.minimapShape:SetText(ns.MinimapShapeLabel()) end
     local by = ns.db.hiddenByKind
     ui.lifetime:SetText(("%s line%s filtered"):format(commas(ns.db.hiddenTotal), ns.db.hiddenTotal == 1 and "" or "s"))
     ui.hidden:SetText(("Lines hidden: |cffffd100%s lifetime|r since %s, %s this session\n%s by word, %s by player, %s by guild"):format(
@@ -561,7 +562,8 @@ local function build()
     ui.count:SetPoint("TOPLEFT", f, "TOPLEFT", PAD, y - 3)
     y = y - BTN_H - PAD
 
-    -- settings: five check boxes in two columns, then a note
+    -- settings: five check boxes in two columns with the minimap shape button in the last
+    -- cell, then a note
     local column = math.floor(INNER / 2)
     local function checkbox(label, key, col, line)
         local cb = S.checkbox(f, label, function(_, on) ns.db[key] = on end)
@@ -578,6 +580,10 @@ local function build()
     ui.checks.bubbles:HookScript("OnClick", function(self)
         if not self:GetChecked() and ns.ShowAllBubbles then ns.ShowAllBubbles() end
     end)
+    -- steps the shape of the minimap the minimap button sits around: auto, round, square
+    ui.minimapShape = S.button(f, "", column - GAP, function() ns.SetMinimapShape(ns.NextMinimapShape()) end)
+    ui.minimapShape:SetHeight(BTN_H - 2)
+    ui.minimapShape:SetPoint("TOPLEFT", f, "TOPLEFT", PAD + column, y - 2 * CHECK_H + 1)
     y = y - 2 * CHECK_H - 14 - GAP
 
     ui.note = S.dim(f, "Warnings cover groups and invites; invites are only declined from blocked people or guilds. "

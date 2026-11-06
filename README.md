@@ -80,6 +80,18 @@ when hovered) opens the Rude Boy window with a left-click and shows or hides the
 with a right-click. Hovering it shows lines blocked, searches pending, and invites declined and
 warned about. Drag it around the minimap's edge to move it; `/rb minimap` hides or shows it.
 
+The button can sit around a round minimap or a square one: `/rb minimap round`,
+`/rb minimap square` or `/rb minimap auto`, or the **Minimap** button beside the check boxes in
+the window. Round puts it on the circle just outside the map; square puts it on the square just
+outside the map, in the same direction from the centre. Auto, the default, follows the
+minimap: it is square when an addon that squares the minimap says so and round otherwise, and
+the button moves within a second when that changes. Addons say so through the global function
+`GetMinimapShape()` (`"SQUARE"` or `"ROUND"`), which ElvUI-style minimaps and Mint Community
+Tools provide. If the addon also provides `GetMinimapEdgeInsets()` (the room it has taken above,
+below, left and right of the map, as Mint Community Tools does for its zone and coordinate
+strips), the button sits clear of that. If your minimap is square and auto does not notice,
+choose square.
+
 ## The on-screen panel
 
 A small flat panel you can park anywhere, in the same style as the window, shows what Rude Boy
@@ -142,6 +154,8 @@ button brings it back. Its position is saved.
 /rb panel recent             the fly-out with the last ten hidden lines
 /rb minimap [show | hide]    the minimap button
 /rb minimap reset            back to its default place
+/rb minimap round | square | auto
+                             the shape of the minimap it sits around (auto follows the minimap)
 /rb interval <seconds>       seconds between /who searches (2 to 30, default 6)
 /rb scanchat on | off        show every scan step and /who result in chat (off by default)
 /rb bubbles on | off         hide blocked players' chat bubbles in the open world (on by default)

@@ -9,7 +9,9 @@
    - `RudeBoy/Core.lua`: `ns.VERSION = "0.2.0"`
 
    (`luajit tests/run.lua` fails if they differ.)
-3. Add a `## 0.2.0` section at the top of `CHANGELOG.md`. It becomes the release notes.
+3. Add a `## 0.2.0` section at the top of `CHANGELOG.md`, with a plain heading (no date). It
+   becomes the release notes on GitHub and CurseForge and is posted in Discord as written, so
+   write it for players: what changed for them and how to use it, no internals.
 4. Commit and push, then tag:
 
    ```bash
@@ -20,6 +22,25 @@
 The Release workflow then runs the tests, checks the tag matches the `.toc` version, builds
 `RudeBoy-v0.2.0.zip` (only the `RudeBoy` folder, see `.pkgmeta`) and publishes it to GitHub
 Releases, plus every site set up below. Watch it under the repo's Actions tab.
+
+5. Announce it in Discord, once the release has been published (so the post can link to it).
+   This posts in the community's Discord, so it is only done for a release Zack has asked for,
+   never for work in progress:
+
+   ```bash
+   python3 ~/Documents/wow-guild-management/WoW-Forever-Guild-Website-and-Management/scripts/addon-publish.py ~/Documents/RudeBoy --dry-run
+   ```
+
+   Check that the dry run reads well and names the right channel (`#misc-addon-dev`, shared with
+   Cat Facts and Rat Facts), then run the same command without `--dry-run`.
+
+   - It posts the top `## <version>` section of `CHANGELOG.md`.
+   - Publishing the same version again replaces the stored notes without posting twice. Use
+     `--repost` only when asked to post a version again.
+   - It uses an officer token kept at `~/.config/mintys-community-manager/token`. Never read,
+     print, move or recreate that file.
+   - If the website refuses the request, report its message rather than working around it.
+   - Full notes: `docs/addon-updates.md` in the website repo.
 
 ## First upload by hand (no automation needed)
 

@@ -91,9 +91,11 @@ local function boot(opts)
     _G.GameTooltip.HasScript = function() return true end
     _G.GameTooltip.SetText = function(self, text) self.lines = { { text = text } } end
     _G.GameTooltip.AddDoubleLine = function(self, left, right) self.lines[#self.lines + 1] = { text = left .. ": " .. right } end
-    -- the minimap: 140 wide, centred at 1000,800; the cursor is wherever env.cursor says
+    -- the minimap: 140 wide unless env.mapWidth says otherwise, centred at 1000,800; the cursor
+    -- is wherever env.cursor says; no addon has said anything about the map's shape
     _G.Minimap = mockFrame()
-    _G.Minimap.GetWidth = function() return 140 end
+    _G.Minimap.GetWidth = function() return env.mapWidth or 140 end
+    _G.GetMinimapShape, _G.GetMinimapEdgeInsets = nil, nil
     _G.Minimap.GetCenter = function() return 1000, 800 end
     _G.Minimap.GetEffectiveScale = function() return 1 end
     _G.GetCursorPosition = function() return env.cursor[1], env.cursor[2] end
@@ -726,9 +728,20 @@ do
     env.slash("scan")
     env.whoAnswer(5, "Big Guild")
     check(env.ns.db.lastScan == env.clock, "a finished scan is timed")
+    env.slash("scan")
+    env.whoAnswer(90, "Big Guild")   -- split: the scan is not finished
+    env.ns.db.lastScan = nil
+    env.clock = env.clock + 100
+    local hw0 = _G.RudeBoyHardwareFrame
+    env.now = env.now + 7
+    hw0.scripts.OnKeyDown(hw0, "W")
+    env.whoAnswer(5, "Big Guild")
+    check(env.ns.db.lastScan == env.clock, "an answered search mid-scan also counts as a scan, so the time moves")
+    for _ = 1, 5 do hw0.scripts.OnKeyDown(hw0, "W") env.whoAnswer(5, "Big Guild") end
     env.clock = env.clock + 3600
+    n = #env.prints
     tick(61)
-    check(#env.prints == n + 2, "no reminder while the scan is newer than 12 hours")
+    check(#env.prints == n, "no reminder while the scan is newer than 12 hours")
 
     env.slash("reminder 30")
     check(env.ns.db.reminderMinutes == 30 and env.lastPrint():find("every 30 minutes"), "/rb reminder sets it")
@@ -1628,6 +1641,89 @@ do
     check(again.ns.minimapButton:IsShown() and near(again.ns.minimapButton.point[5], 75), "/rb minimap shows it where it was left")
     again.slash("minimap reset")
     check(near(again.ns.db.minimap.angle, 215), "/rb minimap reset")
+end
+
+---------------------------------------------------------------------------
+-- The minimap button around a round or a square minimap
+---------------------------------------------------------------------------
+do
+    local env = boot()
+    local b = env.ns.minimapButton
+    local db = env.ns.db
+    local function near(a, c) return math.abs(a - c) < 0.01 end
+    local function drag(x, y)
+        b.scripts.OnDragStart(b)
+        env.cursor = { x, y }
+        b.scripts.OnUpdate(b)
+        b.scripts.OnDragStop(b)
+    end
+    check(db.minimap.shape == "auto" and env.ns.MinimapShape() == "round", "auto means round while nothing says the minimap is square")
+    local old = boot({ db = { minimap = { shown = true, angle = 90 } } })
+    check(old.ns.db.minimap.shape == "auto" and near(old.ns.minimapButton.point[5], 75), "settings from before the shape option come up as auto")
+
+    env = boot()
+    b, db = env.ns.minimapButton, env.ns.db
+    drag(1000, 900)                        -- straight above the minimap's centre
+    env.slash("minimap square")
+    check(db.minimap.shape == "square" and env.ns.MinimapShape() == "square", "/rb minimap square")
+    check(near(b.point[4], 0) and near(b.point[5], 82), "square: straight up, half the width plus 12")
+    drag(1100, 900)
+    check(near(db.minimap.angle, 45) and near(b.point[4], 82) and near(b.point[5], 82), "square: dragged to the corner")
+    drag(900, 790)
+    check(near(b.point[4], -82) and near(b.point[5], -8.2), "square: on the left edge the button slides along it")
+    env.slash("minimap round")
+    check(db.minimap.shape == "round" and near(math.sqrt(b.point[4] ^ 2 + b.point[5] ^ 2), 75), "/rb minimap round puts it back on the circle")
+    env.slash("minimap auto")
+    check(db.minimap.shape == "auto" and env.prints[#env.prints]:find("round right now", 1, true), "/rb minimap auto says what it found")
+
+    -- auto follows what another addon says about the map, and notices within a second
+    local w = _G.RudeBoyMinimapWatcher
+    check(w ~= nil, "a watcher looks at the minimap again once a second")
+    drag(1000, 900)
+    _G.GetMinimapShape = function() return "SQUARE" end
+    _G.GetMinimapEdgeInsets = function() return 17, 33 end
+    w.scripts.OnUpdate(w, 0.4)
+    check(near(b.point[5], 75), "not before a second has passed")
+    w.scripts.OnUpdate(w, 0.7)
+    check(env.ns.MinimapShape() == "square" and near(b.point[4], 0) and near(b.point[5], 82 + 17), "auto: square, and clear of what is above the map")
+    drag(1000, 700)
+    check(near(b.point[5], -(82 + 33)), "auto: clear of what is below the map")
+    drag(900, 800)
+    check(near(b.point[4], -82) and near(b.point[5], 0), "auto: nothing to clear at the side")
+    drag(1000, 700)
+    env.mapWidth = 180
+    w.scripts.OnUpdate(w, 1.1)
+    check(near(b.point[5], -(102 + 33)), "a resized minimap moves the button out with it")
+    _G.GetMinimapShape = function() return "ROUND" end
+    w.scripts.OnUpdate(w, 1.1)
+    check(env.ns.MinimapShape() == "round" and near(b.point[5], -95), "auto: round again when the map is")
+    _G.GetMinimapShape = function() error("broken") end
+    w.scripts.OnUpdate(w, 1.1)
+    check(env.ns.MinimapShape() == "round", "a GetMinimapShape that errors means round")
+    env.slash("minimap square")
+    _G.GetMinimapEdgeInsets = function() return "x", -5 end
+    w.scripts.OnUpdate(w, 1.1)
+    check(near(b.point[5], -102), "insets that are not positive numbers are ignored")
+    _G.GetMinimapShape, _G.GetMinimapEdgeInsets = nil, nil
+    env.mapWidth = nil
+    env.slash("minimap auto")
+
+    -- the window's button steps through the shapes
+    env.slash("")
+    local ui = env.ns.ui
+    check(ui.minimapShape and ui.minimapShape:GetText() == "Minimap: auto (round now)", "the window shows the shape")
+    ui.minimapShape:Click()
+    check(db.minimap.shape == "round" and ui.minimapShape:GetText() == "Minimap: round", "its button steps to round")
+    ui.minimapShape:Click()
+    check(db.minimap.shape == "square" and ui.minimapShape:GetText() == "Minimap: square" and near(b.point[5], -82), "then square, and the minimap button moves")
+    ui.minimapShape:Click()
+    check(db.minimap.shape == "auto", "then back to auto")
+    check(env.ns.SetMinimapShape("sideways") == false and db.minimap.shape == "auto", "anything else is refused")
+
+    -- the shape is saved with the place
+    env.slash("minimap square")
+    local again = boot({ db = db })
+    check(again.ns.db.minimap.shape == "square" and near(again.ns.minimapButton.point[5], -82), "the shape is remembered next session")
 end
 
 realPrint(("%d passed, %d failed"):format(passed, failed))

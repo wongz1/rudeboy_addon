@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.1.10
+
+The minimap button can sit around a square minimap as well as a round one.
+
+- **Round or square.** `/rb minimap round`, `/rb minimap square` or `/rb minimap auto`, or the
+  **Minimap** button beside the check boxes in the window, chooses the edge the button sits on.
+  Round is the circle just outside the map, as before. Square is the square just outside the
+  map, in the same direction from the centre, so the button no longer sits on top of a squared
+  minimap's corners.
+- **Auto, the default,** follows the minimap: square when an addon that squares it says so
+  through `GetMinimapShape()` (ElvUI-style minimaps and Mint Community Tools do), round
+  otherwise. If that addon also reports the room it has taken above and below the map through
+  `GetMinimapEdgeInsets()`, the button sits clear of it. The button looks again once a second,
+  so it moves when the map changes shape or size.
+- The shape is saved with the button's place. Settings from earlier versions come up as auto,
+  which is round unless something says otherwise, so nothing moves on its own.
+- **"Last scan" now moves with every answered search.** It used to update only when a scan ran
+  all the way to "Scan finished", so a big scan cut short by logging out left the time, and the
+  scan reminder, stuck at the last complete run even though the searches that did run had
+  learned their members.
+
 ## 0.1.9
 
 A visual pass: every window now uses a flat, ElvUI-like skin. Nothing about what the addon

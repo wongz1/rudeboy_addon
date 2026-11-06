@@ -371,6 +371,9 @@ function ns.ScanResults(num, total, finishOnly)
     local count = finishOnly and 0 or math.max(num or 0, total or 0)
     quietUntil = GetTime() + 1
     if not finishOnly then
+        -- every answered search is fresh data, so "last scan" moves even if the full run is
+        -- never finished (a big scan can outlast the session)
+        ns.db.lastScan = time()
         tally.searches = tally.searches + 1
         stats.answers = stats.answers + 1
         note(("answer to %s: %d"):format(ns.WhoQuery(s), count))
